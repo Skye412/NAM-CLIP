@@ -1,0 +1,87 @@
+Loading frozen CLIP ViT-L/14@336px backbone on cuda ...
+Datasets Ready:
+  - Bridge512 (CODEBRIM): train=2861, val=400, test=809
+  - Official S2DS (official_full): train=563, val=87, test=93
+
+=======================================================
+Training Variant: M1_PAA on Bridge512 | Trainable Params: 4,288,756 | opts={'sfr_patch_label': 'ratio20', 'cls_px_balance': False, 'group_prior': False}
+=======================================================
+[Ep 01/12] loss=1.9904 | Val Sel-6=75.68% (I-AUROC=85.96, P-AUROC=97.05, P-F1=63.33, P-AP=65.79, P-AUPRO=0.00) [62.8s]
+[Ep 02/12] loss=1.5211 | Val Sel-6=70.61% (I-AUROC=84.54, P-AUROC=95.10, P-F1=53.82, P-AP=52.86, P-AUPRO=0.00) [60.8s]
+[Ep 03/12] loss=1.2788 | Val Sel-6=71.70% (I-AUROC=87.23, P-AUROC=94.57, P-F1=51.54, P-AP=51.58, P-AUPRO=0.00) [60.8s]
+[Ep 04/12] loss=1.1206 | Val Sel-6=71.90% (I-AUROC=86.83, P-AUROC=95.02, P-F1=52.96, P-AP=52.11, P-AUPRO=77.75) [64.7s]
+[Ep 05/12] loss=1.0471 | Val Sel-6=73.83% (I-AUROC=86.85, P-AUROC=95.98, P-F1=57.73, P-AP=56.47, P-AUPRO=0.00) [60.8s]
+[Ep 06/12] loss=0.9853 | Val Sel-6=74.48% (I-AUROC=87.72, P-AUROC=96.05, P-F1=57.16, P-AP=58.39, P-AUPRO=0.00) [60.9s]
+[Ep 07/12] loss=0.9352 | Val Sel-6=73.57% (I-AUROC=88.16, P-AUROC=95.15, P-F1=53.67, P-AP=55.10, P-AUPRO=0.00) [60.9s]
+[Ep 08/12] loss=0.8607 | Val Sel-6=76.90% (I-AUROC=88.71, P-AUROC=96.43, P-F1=59.31, P-AP=61.48, P-AUPRO=78.00) [64.6s]
+[Ep 09/12] loss=0.8271 | Val Sel-6=74.53% (I-AUROC=87.17, P-AUROC=95.85, P-F1=57.20, P-AP=58.85, P-AUPRO=0.00) [60.9s]
+[Ep 10/12] loss=0.7873 | Val Sel-6=76.36% (I-AUROC=89.06, P-AUROC=96.19, P-F1=58.38, P-AP=60.44, P-AUPRO=0.00) [60.9s]
+[Ep 11/12] loss=0.7566 | Val Sel-6=75.62% (I-AUROC=88.49, P-AUROC=96.24, P-F1=58.74, P-AP=60.19, P-AUPRO=0.00) [61.0s]
+[Ep 12/12] loss=0.7306 | Val Sel-6=76.60% (I-AUROC=88.80, P-AUROC=96.31, P-F1=58.86, P-AP=61.44, P-AUPRO=78.38) [64.7s]
+--> Loaded best val checkpoint from Epoch 8 (Val Sel-6=76.90%)
+[M1_PAA In-Domain Test (Bridge512)] Mean-7=81.25% | I-AUROC=93.24 | P-AUROC=95.45 | P-F1=64.90 | P-AP=72.05 | P-AUPRO=78.30 | Per-Class={'Crack_Recall': 49.48, 'Crack_AP': 1.85, 'Crack_AUPRO': 70.54, 'Spalling_Recall': 79.05, 'Spalling_AP': 70.15, 'Spalling_AUPRO': 81.5, 'Corrosion_Recall': 97.86, 'Corrosion_AP': 79.35, 'Corrosion_AUPRO': 90.52, 'Efflorescence_Recall': 63.72, 'Efflorescence_AP': 45.27, 'Efflorescence_AUPRO': 86.04}
+[M1_PAA Cross-Domain Test (Bridge512 -> S2DS)] Mean-7=83.10% | I-AUROC=83.65 | P-AUROC=97.56 | P-F1=73.84 | P-AP=78.75 | P-AUPRO=56.77 | Nuisance-FPR=4.67% | Per-Class={'Crack_Recall': 32.13, 'Crack_AP': 1.21, 'Crack_AUPRO': 54.51, 'Spalling_Recall': 82.03, 'Spalling_AP': 72.41, 'Spalling_AUPRO': 88.65, 'Corrosion_Recall': 75.12, 'Corrosion_AP': 52.24, 'Corrosion_AUPRO': 80.07, 'Efflorescence_Recall': 78.9, 'Efflorescence_AP': 52.59, 'Efflorescence_AUPRO': 74.61}
+
+=======================================================
+Training Variant: M1_HET on Bridge512 | Trainable Params: 4,290,147 | opts={'sfr_patch_label': 'ratio20', 'cls_px_balance': False, 'group_prior': False}
+=======================================================
+[Ep 01/12] loss=1.9530 | Val Sel-6=75.05% (I-AUROC=87.17, P-AUROC=96.02, P-F1=58.06, P-AP=61.54, P-AUPRO=0.00) [54.0s]
+[Ep 02/12] loss=1.5335 | Val Sel-6=74.31% (I-AUROC=88.29, P-AUROC=95.52, P-F1=55.50, P-AP=54.92, P-AUPRO=0.00) [53.7s]
+[Ep 03/12] loss=1.3397 | Val Sel-6=71.97% (I-AUROC=85.80, P-AUROC=95.25, P-F1=54.17, P-AP=53.17, P-AUPRO=0.00) [53.7s]
+[Ep 04/12] loss=1.1920 | Val Sel-6=72.58% (I-AUROC=87.65, P-AUROC=94.82, P-F1=51.92, P-AP=52.42, P-AUPRO=78.01) [57.5s]
+[Ep 05/12] loss=1.0789 | Val Sel-6=73.18% (I-AUROC=87.98, P-AUROC=94.65, P-F1=51.86, P-AP=53.16, P-AUPRO=0.00) [53.6s]
+[Ep 06/12] loss=1.0119 | Val Sel-6=75.68% (I-AUROC=89.20, P-AUROC=96.13, P-F1=57.88, P-AP=58.06, P-AUPRO=0.00) [53.7s]
+[Ep 07/12] loss=0.9360 | Val Sel-6=74.52% (I-AUROC=88.52, P-AUROC=95.58, P-F1=55.00, P-AP=56.24, P-AUPRO=0.00) [53.6s]
+[Ep 08/12] loss=0.8755 | Val Sel-6=77.38% (I-AUROC=89.46, P-AUROC=96.52, P-F1=59.89, P-AP=62.68, P-AUPRO=78.84) [57.5s]
+[Ep 09/12] loss=0.8549 | Val Sel-6=75.59% (I-AUROC=89.11, P-AUROC=95.93, P-F1=57.20, P-AP=58.16, P-AUPRO=0.00) [53.7s]
+[Ep 10/12] loss=0.7952 | Val Sel-6=77.44% (I-AUROC=90.00, P-AUROC=96.40, P-F1=58.95, P-AP=61.94, P-AUPRO=0.00) [53.7s]
+[Ep 11/12] loss=0.7673 | Val Sel-6=77.56% (I-AUROC=89.06, P-AUROC=96.83, P-F1=61.41, P-AP=64.20, P-AUPRO=0.00) [53.6s]
+[Ep 12/12] loss=0.7450 | Val Sel-6=76.32% (I-AUROC=89.26, P-AUROC=96.22, P-F1=58.44, P-AP=60.20, P-AUPRO=77.90) [57.5s]
+--> Loaded best val checkpoint from Epoch 11 (Val Sel-6=77.56%)
+[M1_HET In-Domain Test (Bridge512)] Mean-7=81.18% | I-AUROC=92.57 | P-AUROC=95.77 | P-F1=66.49 | P-AP=72.97 | P-AUPRO=77.15 | Per-Class={'Crack_Recall': 50.57, 'Crack_AP': 1.96, 'Crack_AUPRO': 66.75, 'Spalling_Recall': 81.43, 'Spalling_AP': 70.07, 'Spalling_AUPRO': 81.91, 'Corrosion_Recall': 98.03, 'Corrosion_AP': 78.74, 'Corrosion_AUPRO': 91.17, 'Efflorescence_Recall': 69.69, 'Efflorescence_AP': 47.94, 'Efflorescence_AUPRO': 86.94}
+[M1_HET Cross-Domain Test (Bridge512 -> S2DS)] Mean-7=84.66% | I-AUROC=88.85 | P-AUROC=98.03 | P-F1=75.30 | P-AP=80.12 | P-AUPRO=57.73 | Nuisance-FPR=3.18% | Per-Class={'Crack_Recall': 17.84, 'Crack_AP': 1.11, 'Crack_AUPRO': 54.91, 'Spalling_Recall': 79.38, 'Spalling_AP': 71.96, 'Spalling_AUPRO': 90.0, 'Corrosion_Recall': 77.29, 'Corrosion_AP': 57.83, 'Corrosion_AUPRO': 83.85, 'Efflorescence_Recall': 79.28, 'Efflorescence_AP': 57.46, 'Efflorescence_AUPRO': 82.71}
+
+=======================================================
+Training Variant: M1_WT on Bridge512 | Trainable Params: 4,290,055 | opts={'sfr_patch_label': 'ratio20', 'cls_px_balance': False, 'group_prior': False}
+=======================================================
+[Ep 01/12] loss=1.9507 | Val Sel-6=67.56% (I-AUROC=84.26, P-AUROC=92.70, P-F1=45.63, P-AP=47.69, P-AUPRO=0.00) [52.3s]
+[Ep 02/12] loss=1.4931 | Val Sel-6=70.65% (I-AUROC=86.31, P-AUROC=93.37, P-F1=49.68, P-AP=49.05, P-AUPRO=0.00) [52.2s]
+[Ep 03/12] loss=1.2513 | Val Sel-6=72.76% (I-AUROC=86.96, P-AUROC=95.11, P-F1=53.49, P-AP=52.33, P-AUPRO=0.00) [52.3s]
+[Ep 04/12] loss=1.1557 | Val Sel-6=73.36% (I-AUROC=87.27, P-AUROC=95.37, P-F1=54.91, P-AP=54.57, P-AUPRO=77.17) [56.1s]
+[Ep 05/12] loss=1.0943 | Val Sel-6=74.39% (I-AUROC=86.92, P-AUROC=95.93, P-F1=57.52, P-AP=56.60, P-AUPRO=0.00) [52.2s]
+[Ep 06/12] loss=1.0088 | Val Sel-6=76.99% (I-AUROC=89.03, P-AUROC=96.29, P-F1=58.53, P-AP=61.38, P-AUPRO=0.00) [52.2s]
+[Ep 07/12] loss=0.9347 | Val Sel-6=76.44% (I-AUROC=89.33, P-AUROC=95.93, P-F1=57.31, P-AP=57.83, P-AUPRO=0.00) [52.2s]
+[Ep 08/12] loss=0.9102 | Val Sel-6=75.16% (I-AUROC=89.22, P-AUROC=95.35, P-F1=55.56, P-AP=56.09, P-AUPRO=74.89) [56.0s]
+[Ep 09/12] loss=0.8395 | Val Sel-6=77.14% (I-AUROC=88.38, P-AUROC=96.65, P-F1=60.16, P-AP=63.97, P-AUPRO=0.00) [52.2s]
+[Ep 10/12] loss=0.8045 | Val Sel-6=77.65% (I-AUROC=89.35, P-AUROC=96.43, P-F1=59.07, P-AP=62.14, P-AUPRO=0.00) [52.2s]
+[Ep 11/12] loss=0.7810 | Val Sel-6=75.70% (I-AUROC=88.26, P-AUROC=96.01, P-F1=57.42, P-AP=58.92, P-AUPRO=0.00) [52.2s]
+[Ep 12/12] loss=0.7525 | Val Sel-6=76.90% (I-AUROC=88.54, P-AUROC=96.47, P-F1=59.39, P-AP=62.39, P-AUPRO=76.98) [56.0s]
+--> Loaded best val checkpoint from Epoch 10 (Val Sel-6=77.65%)
+[M1_WT In-Domain Test (Bridge512)] Mean-7=81.61% | I-AUROC=93.21 | P-AUROC=95.64 | P-F1=66.30 | P-AP=73.43 | P-AUPRO=77.69 | Per-Class={'Crack_Recall': 47.03, 'Crack_AP': 1.73, 'Crack_AUPRO': 67.74, 'Spalling_Recall': 80.2, 'Spalling_AP': 71.37, 'Spalling_AUPRO': 82.79, 'Corrosion_Recall': 98.2, 'Corrosion_AP': 81.04, 'Corrosion_AUPRO': 91.75, 'Efflorescence_Recall': 66.81, 'Efflorescence_AP': 47.55, 'Efflorescence_AUPRO': 86.33}
+[M1_WT Cross-Domain Test (Bridge512 -> S2DS)] Mean-7=84.08% | I-AUROC=89.62 | P-AUROC=97.53 | P-F1=74.25 | P-AP=78.17 | P-AUPRO=53.74 | Nuisance-FPR=2.58% | Per-Class={'Crack_Recall': 15.6, 'Crack_AP': 0.86, 'Crack_AUPRO': 50.84, 'Spalling_Recall': 82.78, 'Spalling_AP': 71.55, 'Spalling_AUPRO': 89.64, 'Corrosion_Recall': 76.4, 'Corrosion_AP': 53.85, 'Corrosion_AUPRO': 82.33, 'Efflorescence_Recall': 78.06, 'Efflorescence_AP': 49.07, 'Efflorescence_AUPRO': 76.03}
+
+Saved V2 formatted Markdown tables to: /content/drive/MyDrive/TF_MoECLIP_Bridge_Outputs/retrain_traceable_20261105_s111/summary_tables_v2.md
+### 1. Bridge512 (In-Domain Main Benchmark)
+
+| Variant | I-AUROC | I-F1 | I-AP | P-AUROC | P-F1 | P-AP | P-AUPRO | P-IoU | **Mean-7** | **Mean-5** | Crack | Spalling | Corrosion | Efflor. | Nuis-FPR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **M0** | 91.61 | 75.93 | 82.65 | 93.06 | 60.10 | 62.63 | 76.17 | 42.96 | **77.45** | **76.71** | 60.50 | 85.97 | 98.69 | 47.04 | 0.00% |
+| **M1** | 93.06 | 78.41 | 85.13 | 95.34 | 65.66 | 72.67 | 77.52 | 48.88 | **81.12** | **80.85** | 53.68 | 83.32 | 98.25 | 62.28 | 0.00% |
+| **M1_PAA** | 93.24 | 80.00 | 84.84 | 95.45 | 64.90 | 72.05 | 78.30 | 48.04 | **81.25** | **80.79** | 49.48 | 79.05 | 97.86 | 63.72 | 0.00% |
+| **M1_HET** | 92.57 | 78.65 | 84.66 | 95.77 | 66.49 | 72.97 | 77.15 | 49.81 | **81.18** | **80.99** | 50.57 | 81.43 | 98.03 | 69.69 | 0.00% |
+| **M1_WT** | 93.21 | 78.97 | 86.05 | 95.64 | 66.30 | 73.43 | 77.69 | 49.59 | **81.61** | **81.26** | 47.03 | 80.20 | 98.20 | 66.81 | 0.00% |
+| **M2** | 92.57 | 77.68 | 84.55 | 95.88 | 66.96 | 73.93 | 76.72 | 50.33 | **81.18** | **81.21** | 49.23 | 83.47 | 97.96 | 64.67 | 0.00% |
+| **M3** | 93.13 | 79.93 | 85.61 | 95.37 | 66.27 | 73.37 | 77.23 | 49.56 | **81.56** | **81.07** | 49.95 | 82.60 | 97.77 | 62.08 | 0.00% |
+
+### 2. Bridge512 -> S2DS (Cross-Domain Zero-Shot Benchmark)
+
+| Variant | I-AUROC | I-F1 | I-AP | P-AUROC | P-F1 | P-AP | P-AUPRO | P-IoU | **Mean-7** | **Mean-5** | Crack | Spalling | Corrosion | Efflor. | Nuis-FPR |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **M0** | 84.81 | 94.67 | 97.33 | 97.36 | 68.87 | 71.62 | 63.17 | 52.52 | **82.55** | **77.17** | 31.52 | 80.99 | 71.52 | 83.49 | 3.62% |
+| **M1** | 87.69 | 96.30 | 97.28 | 97.55 | 74.92 | 79.13 | 52.44 | 59.90 | **83.62** | **78.35** | 17.99 | 82.65 | 76.64 | 72.84 | 4.90% |
+| **M1_PAA** | 83.65 | 94.48 | 96.66 | 97.56 | 73.84 | 78.75 | 56.77 | 58.53 | **83.10** | **78.11** | 32.13 | 82.03 | 75.12 | 78.90 | 4.67% |
+| **M1_HET** | 88.85 | 94.67 | 97.90 | 98.03 | 75.30 | 80.12 | 57.73 | 60.38 | **84.66** | **80.00** | 17.84 | 79.38 | 77.29 | 79.28 | 3.18% |
+| **M1_WT** | 89.62 | 97.56 | 97.70 | 97.53 | 74.25 | 78.17 | 53.74 | 59.05 | **84.08** | **78.66** | 15.60 | 82.78 | 76.40 | 78.06 | 2.58% |
+| **M2** | 86.83 | 97.53 | 97.06 | 97.63 | 74.51 | 78.48 | 46.32 | 59.37 | **82.62** | **76.75** | 12.06 | 82.71 | 75.93 | 77.81 | 2.43% |
+| **M3** | 88.75 | 97.53 | 97.62 | 97.68 | 74.70 | 78.47 | 50.66 | 59.61 | **83.63** | **78.05** | 15.58 | 81.08 | 71.72 | 78.19 | 2.31% |
+

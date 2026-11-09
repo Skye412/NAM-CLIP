@@ -1,0 +1,6 @@
+transform    quantile-v2    legacy
+v                  71.62     70.68
+v**3               71.62     66.48
+v**8               71.63     37.88
+sqrt               71.62     69.81
+quantile-v2 spread across transforms: 0.000 (expected < 0.5)

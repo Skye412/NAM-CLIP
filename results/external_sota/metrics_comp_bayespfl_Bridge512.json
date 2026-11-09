@@ -1,0 +1,101 @@
+{
+  "method": "Bayes-PFL (CVPR 2025)",
+  "variant": "comp_bayespfl",
+  "protocol": "Up to 30 Ep (2-Stg, early-stop)",
+  "train_dataset": "Bridge512",
+  "trainable_params": 27370017,
+  "in_domain_test_metrics": {
+    "Image-AUROC": 91.33,
+    "Image-F1": 75.65,
+    "Image-AP": 84.65,
+    "Pixel-AUROC": 93.23,
+    "Pixel-F1": 57.45,
+    "Pixel-AP": 62.79,
+    "Pixel-AUPRO": 75.2,
+    "Pixel-AUPRO-legacy": 74.85,
+    "AUPRO-Impl": "quantile-v2",
+    "Pixel-IoU": 40.3,
+    "Mean-Score": 77.19,
+    "Mean-5": 76.0,
+    "Mean-Score-legacy": 77.14,
+    "Mean-5-legacy": 75.93,
+    "AUPRO-By-Size": {
+      "AUPRO_small": 58.91,
+      "AUPRO_medium": 88.38,
+      "AUPRO_large": 78.31,
+      "area_cut_px": [
+        2009.0,
+        53520.7
+      ],
+      "num_regions": 363
+    },
+    "Best-Th": 0.39,
+    "Normal-FPR": 3.97,
+    "Nuisance-FPR": 0.0,
+    "Per-Class": {
+      "Crack_Recall": 77.0,
+      "Crack_AP": 3.94,
+      "Crack_AUPRO": 63.65,
+      "Spalling_Recall": 77.98,
+      "Spalling_AP": 65.22,
+      "Spalling_AUPRO": 85.91,
+      "Corrosion_Recall": 96.78,
+      "Corrosion_AP": 77.88,
+      "Corrosion_AUPRO": 96.36,
+      "Efflorescence_Recall": 47.29,
+      "Efflorescence_AP": 31.61,
+      "Efflorescence_AUPRO": 80.66
+    }
+  },
+  "cross_domain_name": "S2DS",
+  "cross_domain_test_metrics": {
+    "Image-AUROC": 87.98,
+    "Image-F1": 95.06,
+    "Image-AP": 97.49,
+    "Pixel-AUROC": 96.68,
+    "Pixel-F1": 68.36,
+    "Pixel-AP": 73.41,
+    "Pixel-AUPRO": 31.99,
+    "Pixel-AUPRO-legacy": 29.51,
+    "AUPRO-Impl": "quantile-v2",
+    "Pixel-IoU": 51.93,
+    "Mean-Score": 78.71,
+    "Mean-5": 71.68,
+    "Mean-Score-legacy": 78.36,
+    "Mean-5-legacy": 71.19,
+    "AUPRO-By-Size": {
+      "AUPRO_small": 21.51,
+      "AUPRO_medium": 22.12,
+      "AUPRO_large": 53.5,
+      "area_cut_px": [
+        1.0,
+        6.0
+      ],
+      "num_regions": 1795
+    },
+    "Best-Th": 0.73,
+    "Normal-FPR": 0.86,
+    "Nuisance-FPR": 7.17,
+    "Per-Class": {
+      "Crack_Recall": 0.4,
+      "Crack_AP": 0.37,
+      "Crack_AUPRO": 27.0,
+      "Spalling_Recall": 64.87,
+      "Spalling_AP": 58.34,
+      "Spalling_AUPRO": 89.19,
+      "Corrosion_Recall": 63.23,
+      "Corrosion_AP": 36.16,
+      "Corrosion_AUPRO": 71.53,
+      "Efflorescence_Recall": 97.18,
+      "Efflorescence_AP": 74.44,
+      "Efflorescence_AUPRO": 96.72
+    }
+  },
+  "provenance": {
+    "written_by": "eval_ext_step1.py",
+    "written_at": "2026-11-08 00:22:01",
+    "ckpt_file": "/home/skye/data/Skye/visualad/outputs/comp_bayespfl_CODEBRIM/best_model.pth",
+    "ckpt_sha256": "048d128fc5f6cffd6027744fe59f6b09d4ec8c755b2899d183f44165cc36c604",
+    "ckpt_bytes": 109523893
+  }
+}
