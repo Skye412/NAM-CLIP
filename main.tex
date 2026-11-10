@@ -154,7 +154,40 @@ Crucially, we audit the ``fast AUPRO'' implementation widely shared across publi
 
 \textbf{Implementation details and baselines.} \method{} is trained from scratch for 12 epochs using AdamW ($\mathrm{lr}{=}5{\times}10^{-4}$, cosine decay, batch size 16, seed 111), selecting the best checkpoint on validation Mean-6. We compare against six representative state-of-the-art methods: unsupervised feature reconstruction \textbf{Dinomaly} (CVPR'25)~\cite{guo2025dinomaly}, supervised defect segmenters \textbf{WPFormer} (CVPR'25)~\cite{yan2025wpformer} and \textbf{MixerCSeg} (CVPR'26)~\cite{zhao2026mixercseg}, and CLIP-based zero-shot detectors \textbf{AnomalyCLIP} (ICLR'24)~\cite{zhou2024anomalyclip}, \textbf{Bayes-PFL} (CVPR'25)~\cite{qu2025bayespfl}, \textbf{AdaptCLIP} (AAAI'26)~\cite{gao2026adaptclip}, and our baseline \textbf{MoECLIP} (CVPR'26)~\cite{park2026moeclip}. All competing methods are trained on the identical source splits using their official repositories and evaluated on the identical test splits under the unified metric suite.
 
-\subsection{Cross-Domain Zero-Shot Defect Segmentation}
+\subsection{In-Domain Defect Detection and Segmentation}
+
+\begin{table*}[t]
+\centering
+\caption{In-domain anomaly classification and defect segmentation on Bridge512 and Official S2DS ($1024{\times}1024$), plus two-dataset mean across unsupervised and CLIP-based anomaly detectors (top). Fully supervised segmentation networks trained with dense target-domain pixel masks are listed at the bottom in gray as an upper-bound reference. Best anomaly-detection results are in \textbf{bold} and second-best are \underline{underlined}.}
+\label{tab:in_domain}
+\footnotesize
+\setlength{\tabcolsep}{3.6pt}
+\begin{tabular}{l l | cc ccc | cc ccc c | ccc}
+\toprule
+& & \multicolumn{5}{c|}{\textbf{Bridge512 (In-Domain)}} & \multicolumn{6}{c|}{\textbf{Official S2DS (In-Domain)}} & \multicolumn{3}{c}{\textbf{In-Domain Mean}} \\
+\cmidrule(lr){3-7} \cmidrule(lr){8-13} \cmidrule(lr){14-16}
+Method & Venue & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & FPR$\downarrow$ & I-AUC & I-F1 & P-PRO \\
+\midrule
+Dinomaly~\cite{guo2025dinomaly} & CVPR'25 & 81.01 & 66.38 & 83.55 & 27.94 & 58.19 & 71.06 & 96.39 & 87.08 & 25.89 & 20.53 & 45.46 & 76.04 & 81.39 & 39.36 \\
+AnomalyCLIP~\cite{zhou2024anomalyclip} & ICLR'24 & 82.28 & 66.33 & 91.98 & 56.98 & 69.53 & 90.58 & 97.53 & 97.56 & 77.17 & 43.73 & 23.38 & 86.43 & 81.93 & 56.63 \\
+Bayes-PFL~\cite{qu2025bayespfl} & CVPR'25 & 91.33 & 75.65 & 93.23 & 62.79 & 75.20 & 99.71 & 98.77 & 99.17 & \textbf{93.47} & 42.20 & \underline{0.17} & 95.52 & 87.21 & 58.70 \\
+AdaptCLIP~\cite{gao2026adaptclip} & AAAI'26 & \underline{92.50} & \underline{76.67} & \textbf{95.69} & \textbf{74.82} & \textbf{80.02} & \underline{99.90} & \underline{99.38} & \underline{99.26} & 91.86 & 69.74 & 0.33 & \underline{96.20} & \underline{88.03} & 74.88 \\
+MoECLIP (Baseline)~\cite{park2026moeclip} & CVPR'26 & 91.61 & 75.93 & 93.06 & 62.63 & 76.17 & \underline{99.90} & \underline{99.38} & 98.55 & 82.28 & \textbf{81.50} & 0.22 & 95.76 & 87.66 & \underline{78.84} \\
+\textbf{\method{} (Ours)} & --- & \textbf{93.10} & \textbf{78.37} & \underline{95.29} & \underline{72.44} & \underline{78.76} & \textbf{100.0} & \textbf{100.0} & \textbf{99.31} & \underline{92.11} & \underline{80.35} & \textbf{0.15} & \textbf{96.55} & \textbf{89.19} & \textbf{79.56} \\
+\midrule
+\textcolor{gray}{MixerCSeg (Sup.)~\cite{zhao2026mixercseg}} & \textcolor{gray}{CVPR'26} & \textcolor{gray}{77.52} & \textcolor{gray}{61.81} & \textcolor{gray}{90.60} & \textcolor{gray}{51.95} & \textcolor{gray}{59.04} & \textcolor{gray}{58.17} & \textcolor{gray}{92.49} & \textcolor{gray}{93.76} & \textcolor{gray}{58.53} & \textcolor{gray}{23.27} & \textcolor{gray}{21.87} & \textcolor{gray}{67.85} & \textcolor{gray}{77.15} & \textcolor{gray}{41.16} \\
+\textcolor{gray}{WPFormer (Sup.)~\cite{yan2025wpformer}} & \textcolor{gray}{CVPR'25} & \textcolor{gray}{88.79} & \textcolor{gray}{74.33} & \textcolor{gray}{79.08} & \textcolor{gray}{59.51} & \textcolor{gray}{78.82} & \textcolor{gray}{95.96} & \textcolor{gray}{99.38} & \textcolor{gray}{98.85} & \textcolor{gray}{95.96} & \textcolor{gray}{81.42} & \textcolor{gray}{0.14} & \textcolor{gray}{92.38} & \textcolor{gray}{86.86} & \textcolor{gray}{80.12} \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}, Table~\ref{tab:in_domain} first evaluates in-domain anomaly classification and pixel segmentation on Bridge512 and Official S2DS, separating anomaly-detection paradigms (unsupervised and CLIP-based methods) from fully supervised segmentation networks trained directly on dense target-domain masks. Across the two-dataset mean, \method{} achieves the highest overall image-level discrimination (\textbf{96.55\% I-AUC} and \textbf{89.19\% I-F1}) as well as the highest region-level overlap (\textbf{79.56\% P-AUPRO}) among all anomaly detectors:
+
+\textbf{Official S2DS.} \method{} ranks first on four of the six columns and second on the remaining two. Specifically, it reaches a perfect \textbf{100.00\% I-AUC} and \textbf{100.00\% I-F1}, the highest pixel AUROC of \textbf{99.31\%}, and the lowest nuisance false-positive rate of \textbf{0.15\%}. Relative to its MoECLIP backbone, \method{} boosts pixel precision by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%); relative to AdaptCLIP, it improves region overlap by \textbf{+10.61 percentage points} in P-AUPRO (80.35\% vs.\ 69.74\%) while cutting Nuis-FPR in half (0.15\% vs.\ 0.33\%). Notably, \method{} also outperforms the fully supervised WPFormer in image-level AUROC (100.0\% vs.\ 95.96\%) and pixel AUROC (99.31\% vs.\ 98.85\%).
+
+\textbf{Bridge512.} \method{} achieves the highest image-level detection scores across all compared methods---including supervised ones---with \textbf{93.10\% I-AUC} and \textbf{78.37\% I-F1} (+0.60\% and +1.70\% over AdaptCLIP), while substantially lifting MoECLIP's pixel precision from 62.63\% to \textbf{72.44\% P-AP} (+9.81\%) and P-AUPRO from 76.17\% to \textbf{78.76\%} (+2.59\%). Although AdaptCLIP's domain-specific visual adapter attains slightly higher in-domain pixel overlap on Bridge512 (74.82\% P-AP), its reliance on binary prototypes leads to severe region drop on S2DS (69.74\% P-AUPRO) and elevated cross-domain false alarms, whereas \method{} delivers balanced top-two accuracy across every metric on both datasets.
+
+\subsection{Cross-Domain Zero-Shot Generalization}
 
 \begin{table*}[t]
 \centering
@@ -181,42 +214,11 @@ MoECLIP (Baseline)~\cite{park2026moeclip} & CVPR'26 & 84.81 & 94.67 & 97.33 & 97
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:cross_domain} presents the primary evaluation of zero-shot cross-dataset generalization between Bridge512 and Official S2DS. Because the two datasets differ sharply in spatial resolution ($512{\times}512$ close-up tiles vs.\ $1024{\times}1024$ wide-angle structural views), background complexity, and defect prevalence, cross-domain transfer directly tests whether a detector learns domain-invariant defect semantics rather than source background shortcuts.
+Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset generalization when models trained on one bridge dataset are deployed directly on the other without target-domain adaptation. Because Bridge512 ($512{\times}512$ close-up tiles) and Official S2DS ($1024{\times}1024$ wide-angle structural views) differ substantially in spatial scale, surface weathering, and benign nuisance prevalence, cross-domain transfer directly tests whether a detector captures domain-invariant defect semantics rather than source background shortcuts.
 
-\textbf{Superiority on Bridge512 $\rightarrow$ Official S2DS.} \method{} establishes a clear lead across both image-level anomaly detection and pixel-level precision. At the image level, \method{} reaches \textbf{97.69\% I-AUC}, \textbf{96.86\% I-F1}, and \textbf{99.64\% I-AP}, outperforming the MoECLIP backbone by +12.88\% I-AUC and +2.31\% I-AP, and surpassing AdaptCLIP by +17.69\% I-AUC. At the pixel level, \method{} achieves the highest precision of \textbf{79.54\% P-AP} (+7.92\% over MoECLIP). Most importantly, \method{} reduces the benign nuisance false-positive rate (Nuis-FPR) to \textbf{0.83\%}---the lowest among all VLM and unsupervised detectors, representing a \textbf{4.4$\times$ reduction} relative to MoECLIP (3.62\%), a \textbf{3.8$\times$ reduction} relative to AdaptCLIP (3.18\%), and an \textbf{8.6$\times$--11.1$\times$ reduction} relative to Bayes-PFL (7.17\%) and AnomalyCLIP (9.25\%). While the purely visual supervised WPFormer retains a low Nuis-FPR (0.56\%) and high crack-fragment overlap (68.47\% P-AUPRO) by predicting conservative high-threshold crack lines, its pixel precision drops to 45.02\% P-AP and 73.74\% P-AUC (more than 34 points below \method{} in P-AP) due to severe domain shift on area defects.
+\textbf{Bridge512 $\rightarrow$ Official S2DS.} \method{} establishes a decisive lead across image-level discrimination, pixel-level precision, and nuisance rejection. It reaches \textbf{97.69\% I-AUC}, \textbf{96.86\% I-F1}, \textbf{99.64\% I-AP}, and \textbf{79.54\% P-AP}, outperforming MoECLIP by +12.88\% I-AUC and +7.92\% P-AP, and surpassing AdaptCLIP by +17.69\% I-AUC. Crucially, \method{} drives Nuis-FPR down to \textbf{0.83\%}---a \textbf{4.4$\times$ reduction} over MoECLIP (3.62\%), a \textbf{3.8$\times$ reduction} over AdaptCLIP (3.18\%), and an \textbf{8.6$\times$--11.1$\times$ reduction} over Bayes-PFL (7.17\%) and AnomalyCLIP (9.25\%). While the supervised WPFormer exhibits low Nuis-FPR (0.56\%) and high crack-fragment overlap (68.47\% P-AUPRO) by outputting conservative crack lines, its pixel precision collapses to 45.02\% P-AP and 73.74\% P-AUC under domain shift.
 
-\textbf{Superiority on Official S2DS $\rightarrow$ Bridge512.} When trained on the smaller S2DS dataset (563 images) and transferred zero-shot to the 809 test images of Bridge512, \method{} again achieves the best performance on four of the six metrics and second-best on P-AP. Specifically, \method{} attains \textbf{82.84\% I-AUC}, \textbf{67.94\% I-F1}, and \textbf{64.90\% I-AP} (surpassing AdaptCLIP by +4.73\%, +4.45\%, and +4.91\%, respectively), while achieving the highest region-level localization score of \textbf{68.60\% P-AUPRO} (+6.46\% over AdaptCLIP and +18.45\% over Bayes-PFL). In contrast, supervised segmenters (WPFormer and MixerCSeg) suffer catastrophic cross-domain degradation, falling to 24.64\% and 30.19\% P-AP.
-
-\subsection{In-Domain Defect Segmentation}
-
-\begin{table}[t]
-\centering
-\caption{In-domain defect segmentation on Bridge512 and Official S2DS among zero-shot and unsupervised anomaly detectors (top) alongside fully supervised segmentation networks trained on target masks (bottom, gray). Best zero-shot results are in \textbf{bold} and second-best are \underline{underlined}.}
-\label{tab:in_domain}
-\scriptsize
-\setlength{\tabcolsep}{2.2pt}
-\begin{tabular}{l | cccc | cccc c}
-\toprule
-& \multicolumn{4}{c|}{\textbf{Bridge512 (In-Domain)}} & \multicolumn{5}{c}{\textbf{Official S2DS (In-Domain)}} \\
-\cmidrule(lr){2-5} \cmidrule(lr){6-10}
-Method & I-AUC & I-F1 & P-AP & P-PRO & I-AUC & P-AUC & P-AP & P-PRO & FPR$\downarrow$ \\
-\midrule
-Dinomaly~\cite{guo2025dinomaly} & 81.01 & 66.38 & 27.94 & 58.19 & 71.06 & 87.08 & 25.89 & 20.53 & 45.46 \\
-AnomalyCLIP~\cite{zhou2024anomalyclip} & 82.28 & 66.33 & 56.98 & 69.53 & 90.58 & 97.56 & 77.17 & 43.73 & 23.38 \\
-Bayes-PFL~\cite{qu2025bayespfl} & 91.33 & 75.65 & 62.79 & 75.20 & 99.71 & 99.17 & \textbf{93.47} & 42.20 & 0.17 \\
-AdaptCLIP~\cite{gao2026adaptclip} & \underline{92.50} & \underline{76.67} & \textbf{74.82} & \textbf{80.02} & \underline{99.90} & \underline{99.26} & 91.86 & 69.74 & 0.33 \\
-MoECLIP~\cite{park2026moeclip} & 91.61 & 75.93 & 62.63 & 76.17 & \underline{99.90} & 98.55 & 82.28 & \textbf{81.50} & 0.22 \\
-\textbf{\method{} (Ours)} & \textbf{93.10} & \textbf{78.37} & \underline{72.44} & \underline{78.76} & \textbf{100.0} & \textbf{99.31} & \underline{92.11} & \underline{80.35} & \textbf{0.15} \\
-\midrule
-\textcolor{gray}{MixerCSeg (Sup.)~\cite{zhao2026mixercseg}} & \textcolor{gray}{77.52} & \textcolor{gray}{61.81} & \textcolor{gray}{51.95} & \textcolor{gray}{59.04} & \textcolor{gray}{58.17} & \textcolor{gray}{93.76} & \textcolor{gray}{58.53} & \textcolor{gray}{23.27} & \textcolor{gray}{21.87} \\
-\textcolor{gray}{WPFormer (Sup.)~\cite{yan2025wpformer}} & \textcolor{gray}{88.79} & \textcolor{gray}{74.33} & \textcolor{gray}{59.51} & \textcolor{gray}{78.82} & \textcolor{gray}{95.96} & \textcolor{gray}{98.85} & \textcolor{gray}{95.96} & \textcolor{gray}{81.42} & \textcolor{gray}{0.14} \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-Table~\ref{tab:in_domain} evaluates in-domain performance when training and testing splits originate from the same dataset. Across both benchmarks, \method{} substantially improves upon its MoECLIP backbone and achieves the strongest overall image-level and region-level balance among all CLIP-based detectors:
-(1) On \textbf{Official S2DS}, \method{} attains a perfect \textbf{100.00\% I-AUC} (and 100.00\% I-F1/I-AP), the highest pixel AUROC of \textbf{99.31\%}, the lowest nuisance false-positive rate of \textbf{0.15\%}, and boosts pixel precision over MoECLIP by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%). Compared with AdaptCLIP, \method{} improves P-AUPRO by \textbf{+10.61 percentage points} (80.35\% vs.\ 69.74\%) while halving Nuis-FPR (0.15\% vs.\ 0.33\%).
-(2) On \textbf{Bridge512}, \method{} achieves the highest image-level anomaly discrimination across all methods (\textbf{93.10\% I-AUC} and \textbf{78.37\% I-F1}, outperforming AdaptCLIP by +0.60\% and +1.70\%) and lifts MoECLIP's pixel precision from 62.63\% to \textbf{72.44\% P-AP} (+9.81\%) and P-AUPRO from 76.17\% to \textbf{78.76\%} (+2.59\%). While AdaptCLIP's domain-specific visual adapter yields a slight edge in in-domain pixel overlap on Bridge512 (74.82\% P-AP), \method{} avoids source-domain overfitting and delivers superior generalization across all other in-domain and cross-domain settings.
+\textbf{Official S2DS $\rightarrow$ Bridge512.} Trained on only 563 S2DS images and tested zero-shot on 809 Bridge512 images, \method{} again leads four of the six metrics (\textbf{82.84\% I-AUC}, \textbf{67.94\% I-F1}, \textbf{64.90\% I-AP}, and \textbf{68.60\% P-AUPRO}), outperforming AdaptCLIP by +4.73\% I-AUC and +6.46\% P-AUPRO, whereas supervised networks (WPFormer and MixerCSeg) drop to 24.64\% and 30.19\% P-AP.
 
 \subsection{Ablation Study and Synergistic Interaction Analysis}
 \label{sec:ablation}
