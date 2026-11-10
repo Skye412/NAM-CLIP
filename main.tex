@@ -31,7 +31,7 @@ liuqiang@hut.edu.cn, hfz422875@stu.hut.edu.cn}}
 \maketitle
 
 \begin{abstract}
-Zero-shot anomaly segmentation with CLIP locates defects on unseen objects by scoring each patch against a pair of normal and abnormal text prototypes. On infrastructure surfaces this binary formulation breaks down: bridge inspection images contain water stains, cast shadows, moss, vegetation, geodetic survey markers, and mortar repair patches that are as visually salient as structural damage, while the defects themselves span multiple categories with distinct morphologies. Under a binary prototype these benign surface variations have no semantic position, causing existing zero-shot detectors to trigger false alarms on 3.18\%--9.25\% of nuisance pixels when transferred across bridge datasets. We propose \method{}, which replaces the binary prototype with a Structured Anchor Graph (\sag{}): twelve text anchors organized into a normal group, a six-way benign nuisance group, and a five-way defect group, jointly refined by a co-occurrence relational graph and scored through grouped log-sum-exp energies so that anomaly probability is governed by the energy gap between the defect group and the structured background. Because fine-grained semantic partitioning sharpens pixel-level precision at the cost of fragmented region responses, we introduce a Spatial Low-rank Expert (\sle{}) that embeds a residual depthwise $3{\times}3$ mixing bottleneck inside every FOFS-orthogonalized LoRA expert of the MoE backbone. The two modules exhibit a strict synergy: \sle{} applied to a binary-prototype backbone degrades cross-domain region overlap from 63.17\% to 39.23\% AUPRO, yet restores region continuity and suppresses isolated false alarms once the semantic space is structured by \sag{}. Evaluated across in-domain benchmarks and bidirectional cross-domain transfers on two bridge inspection datasets against six recent detectors, \method{} achieves the best overall in-domain anomaly detection performance (96.55\% mean image AUROC and 79.56\% mean AUPRO), leads both zero-shot transfer directions (97.69\% and 82.84\% image AUROC; 79.54\% pixel AP and 68.60\% AUPRO), and cuts the cross-domain nuisance false-positive rate to 0.83\%---four to eleven times lower than prior CLIP-based detectors.
+Zero-shot anomaly segmentation with CLIP locates defects on unseen objects by scoring each patch against a pair of normal and abnormal text prototypes. On infrastructure surfaces this binary formulation breaks down: bridge inspection images contain water stains, cast shadows, moss, vegetation, geodetic survey markers, and mortar repair patches that are as visually salient as structural damage, while the defects themselves span multiple categories with distinct morphologies. Under a binary prototype these benign surface variations have no semantic position, causing existing zero-shot detectors to trigger false alarms on 3.18\%--9.25\% of nuisance pixels when transferred across bridge datasets. We propose \method{}, which replaces the binary prototype with a Structured Anchor Graph (\sag{}): twelve text anchors organized into a normal group, a six-way benign nuisance group, and a five-way defect group, jointly refined by a co-occurrence relational graph and scored through grouped log-sum-exp energies so that anomaly probability is governed by the energy gap between the defect group and the structured background. Because fine-grained semantic partitioning sharpens pixel-level precision at the cost of fragmented region responses, we introduce a Spatial Low-rank Expert (\sle{}) that embeds a residual depthwise $3{\times}3$ mixing bottleneck inside every FOFS-orthogonalized LoRA expert of the MoE backbone. The two modules exhibit a strict synergy: \sle{} applied to a binary-prototype backbone degrades cross-domain region overlap from 63.17\% to 39.23\% AUPRO, yet restores region continuity and suppresses isolated false alarms once the semantic space is structured by \sag{}. Evaluated across in-domain benchmarks and bidirectional cross-domain transfers on Bridge512 and S2DS against six recent detectors, \method{} achieves the best overall in-domain anomaly detection performance (93.10\% and 100.0\% image AUROC), leads both zero-shot transfer directions (97.69\% and 82.84\% image AUROC; 79.54\% pixel AP and 68.60\% AUPRO), and cuts the cross-domain nuisance false-positive rate to 0.83\%---four to eleven times lower than prior CLIP-based detectors.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -40,118 +40,36 @@ zero-shot anomaly segmentation, bridge defect detection, vision-language models,
 
 \section{Introduction}
 
-Visual inspection of civil infrastructure requires localizing spalling, corrosion, efflorescence, and cracks on concrete bridge surfaces whose illumination, surface weathering, and imaging geometry vary substantially across structures and inspection campaigns. Because pixel-level annotation for every newly inspected bridge is prohibitive, zero-shot anomaly segmentation offers a compelling paradigm: a detector trained once on an auxiliary source dataset is deployed directly on unseen target structures without target-domain labels. Recent CLIP-based zero-shot anomaly detection (ZSAD) methods~\cite{jeong2023winclip,zhou2024anomalyclip,qu2025bayespfl,gao2026adaptclip,park2026moeclip} have achieved strong transferability on industrial manufacturing benchmarks through a shared formulation: learn a pair of global text prototypes representing ``normal'' and ``abnormal'' states, compute patch-wise cosine similarities against both poles, and derive anomaly maps from the two-way softmax.
+Visual inspection of civil infrastructure requires localizing spalling, corrosion, efflorescence, and cracks on concrete bridge surfaces across diverse structures and imaging conditions. Because pixel-level annotation for every newly inspected bridge is prohibitive, zero-shot anomaly segmentation offers a practical route: a detector trained once on an auxiliary dataset segments defects on unseen target structures without target labels. Recent CLIP-based zero-shot anomaly detection (ZSAD) methods~\cite{jeong2023winclip,zhou2024anomalyclip,qu2025bayespfl,gao2026adaptclip,park2026moeclip} achieve strong transferability on industrial parts by contrasting patch embeddings against a pair of global normal and abnormal text prototypes.
 
-This formulation relies on an implicit assumption that any visual pattern deviating from uniform normality is a defect. While industrial benchmarks such as MVTec~AD~\cite{bergmann2021mvtec} and VisA~\cite{zou2022visa} satisfy this assumption by photographing isolated manufactured parts against controlled backgrounds, real-world infrastructure surfaces violate it fundamentally. As illustrated in Fig.~\ref{fig:teaser}, field bridge imagery in S2DS~\cite{benz2022s2ds} routinely contains prominent non-defect entities---overhanging vegetation, black-and-white geodetic fiducial markers, dark moisture streaks, cast shadows, biological moss films, and mortar patch repairs---that co-occur alongside structural spalling and rebar corrosion. Under a binary text prototype, these benign surface structures have no dedicated semantic representation. If they fall closer to the ``abnormal'' prototype, they produce systematic false alarms; if training forces them into the single ``normal'' prototype, the normal anchor is stretched across heterogeneous appearances and suppresses genuine defects that co-occur with stains or vegetation. In zero-shot transfer from Bridge512 to S2DS, existing ZSAD methods fire on 9.25\% (AnomalyCLIP~\cite{zhou2024anomalyclip}), 7.17\% (Bayes-PFL~\cite{qu2025bayespfl}), 3.62\% (MoECLIP~\cite{park2026moeclip}), and 3.18\% (AdaptCLIP~\cite{gao2026adaptclip}) of annotated nuisance pixels. Simultaneously, collapsing four morphologically distinct defect types into a single ``abnormal'' direction limits class-specific sensitivity, leaving the MoECLIP baseline at 24.84\% average precision on diffuse efflorescence versus 78.20\% on corrosion.
+This binary formulation assumes that any pattern deviating from uniform normality is a defect. While industrial benchmarks~\cite{bergmann2021mvtec,zou2022visa} satisfy this assumption on controlled backgrounds, field bridge imagery in S2DS~\cite{benz2022s2ds} violates it fundamentally (Fig.~\ref{fig:teaser}): overhanging vegetation, geodetic fiducial markers, moisture streaks, cast shadows, moss films, and mortar repairs co-occur alongside structural damage. Under a binary prototype, these benign structures have no semantic position. Pushed toward the abnormal pole, they trigger false alarms---on Bridge512$\rightarrow$S2DS transfer, AnomalyCLIP~\cite{zhou2024anomalyclip}, Bayes-PFL~\cite{qu2025bayespfl}, MoECLIP~\cite{park2026moeclip}, and AdaptCLIP~\cite{gao2026adaptclip} misclassify 9.25\%, 7.17\%, 3.62\%, and 3.18\% of nuisance pixels, respectively. Pushed toward the normal pole, they stretch the single normal prototype across heterogeneous appearances and suppress co-occurring defects. Meanwhile, collapsing four morphologically distinct defect classes into one abnormal direction leaves the MoECLIP baseline at 24.84\% AP on diffuse efflorescence versus 78.20\% on corrosion. Simply adding more binary prompts cannot separate nuisances from damage; infrastructure surfaces instead require a structured semantic space that assigns benign variations explicit anchors and defines anomaly scoring as a comparison between semantic groups.
 
-Naive modifications of the prompt bank do not resolve this tension. Enlarging the abnormal prompt set fails to separate benign nuisances from structural damage because both remain pooled into the same positive logit. Conversely, merging nuisance descriptions into a flat normal prompt averages incompatible semantics into a single vector, eroding sensitivity wherever defects border dampness or repair seams. Infrastructure inspection instead requires a structured semantic space that assigns benign surface variations their own explicit anchors and formulates anomaly scoring as a set-to-set energy comparison between damage and a multi-modal background.
-
-We present \textbf{\method{}}, a nuisance-aware mixture-of-experts framework built upon two mutually dependent components:
-\begin{enumerate}
-\item \textbf{Structured Anchor Graph (\sag{}).} We replace binary prototypes with twelve semantic anchors partitioned into three functional groups: one intact-concrete anchor, six named benign nuisance anchors (water stain, cast shadow, moss/algae, vegetation, geodetic control point, and mortar/formwork texture), and five defect anchors (crack, spalling, corrosion, efflorescence, plus a generic structural anomaly anchor). Representation steering adapts the twelve anchors to the bridge domain while enforcing an explicit cosine margin between nuisance and defect subspaces. A two-layer relational graph convolutional network (GCN) over a physical co-occurrence graph jointly refines the twelve patch logits, and the final anomaly probability is computed from the log-sum-exp ($\lse$) energy gap between the defect group and the composite background group (normal $\oplus$ nuisance).
-\item \textbf{Spatial Low-rank Experts (\sle{}).} Partitioning the text space into twelve fine-grained anchors substantially boosts pixel precision (+10.04\% P-AP on Bridge512) but introduces spatial fragmentation across patch tokens, as the point-wise LoRA experts in MoECLIP transform each token independently without neighbourhood context. \sle{} embeds a residual-gated $3{\times}3$ depthwise-separable convolutional bottleneck inside the rank-$r$ subspace of each FOFS-orthogonalized expert, adding only 2,192 parameters (0.05\%) across four ViT layers. Crucially, we uncover a strong non-additive interaction between semantic structure and spatial mixing: applying \sle{} to the binary-prototype backbone severely degrades cross-domain region coverage (P-AUPRO drops from 63.17\% to 39.23\%) because spatial aggregation diffuses unseparated background noise into fine defects, whereas combining \sle{} with \sag{} restores region continuity (59.25\% P-AUPRO) and drives the nuisance false-positive rate down to 0.83\%.
-\end{enumerate}
+We present \textbf{\method{}}, a nuisance-aware mixture-of-experts framework built upon two mutually dependent components. First, the \textbf{Structured Anchor Graph (\sag{})} replaces binary prototypes with twelve semantic anchors partitioned into three functional groups: one intact-concrete anchor, six named benign nuisance anchors (water stain, cast shadow, moss/algae, vegetation, geodetic control point, and mortar/formwork texture), and five defect anchors (crack, spalling, corrosion, efflorescence, plus a generic structural anomaly anchor). Representation steering adapts the twelve anchors to the bridge domain while enforcing a cosine margin between nuisance and defect subspaces. A two-layer relational graph convolutional network (GCN) over a co-occurrence graph jointly refines the twelve patch logits, and the anomaly probability is computed from the log-sum-exp ($\lse$) energy gap between the defect group and the composite background group (normal $\oplus$ nuisance). Second, the \textbf{Spatial Low-rank Expert (\sle{})} resolves the spatial fragmentation caused by fine-grained 12-way anchor competition across independent patch tokens. \sle{} embeds a residual-gated $3{\times}3$ depthwise-separable convolutional bottleneck inside the rank-$r$ subspace of each FOFS-orthogonalized LoRA expert, adding only 2,192 parameters (0.05\%) across four ViT layers. Crucially, we uncover a strict non-additive synergy: applying \sle{} to the binary-prototype backbone severely degrades cross-domain region coverage (P-AUPRO drops from 63.17\% to 39.23\%) because spatial mixing diffuses unseparated background noise into fine defects, whereas combining \sle{} with \sag{} restores region continuity (59.25\% P-AUPRO) and drives the nuisance false-positive rate down to 0.83\%.
 
 Our main contributions are summarized as follows:
 \begin{itemize}
-\item We formulate nuisance-aware zero-shot defect segmentation for infrastructure surfaces and establish a bidirectional evaluation protocol across Bridge512~\cite{mundt2019codebrim} and official full-resolution S2DS~\cite{benz2022s2ds} that jointly measures defect localization and explicit nuisance false-positive rates (Nuis-FPR) under a rank-invariant quantile AUPRO metric.
+\item We formulate nuisance-aware zero-shot defect segmentation for infrastructure surfaces and establish a bidirectional evaluation protocol across Bridge512~\cite{mundt2019codebrim} and S2DS~\cite{benz2022s2ds} that jointly measures defect localization and explicit nuisance false-positive rates (Nuis-FPR) under a rank-invariant quantile AUPRO metric.
 \item We propose \sag{}, which organizes twelve semantic anchors into normal, nuisance, and defect groups with relational GCN refinement and grouped $\lse$ energy scoring, reducing cross-domain nuisance false alarms by 74\%--91\% relative to existing CLIP-based detectors.
-\item We design \sle{} inside orthogonal MoE low-rank bottlenecks and demonstrate through $2{\times}2$ factorial and homogeneous-versus-heterogeneous ablations that local spatial mixing is destructive under binary prototypes but strongly synergistic with structured semantic anchors.
-\item Extensive experiments against six state-of-the-art unsupervised, supervised, and zero-shot methods show that \method{} achieves the best overall performance across both in-domain benchmarks (96.55\% mean I-AUC, 89.19\% mean I-F1, and 79.56\% mean P-AUPRO) and both zero-shot transfer directions (97.69\% and 82.84\% I-AUC; 0.83\% Nuis-FPR).
+\item We design \sle{} inside orthogonal MoE low-rank bottlenecks and demonstrate through factorial and homogeneous-versus-heterogeneous ablations that local spatial mixing is destructive under binary prototypes but strongly synergistic with structured semantic anchors.
+\item Extensive experiments against six recent unsupervised, supervised, and zero-shot methods show that \method{} achieves state-of-the-art performance across both in-domain benchmarks and both zero-shot transfer directions while cutting cross-domain Nuis-FPR to 0.83\%.
 \end{itemize}
 
 \begin{figure}[t]
 \centering
-\fbox{\parbox[c][3.6cm][c]{0.95\linewidth}{\centering \todo{Fig.~1 placeholder: (left) S2DS inspection image containing vegetation, geodetic control point, water stain, and spalling with exposed rebar; (middle) Binary-prototype ZSAD heat maps (AdaptCLIP / MoECLIP) firing on vegetation and fiducial markers; (right) \method{} heat map suppressing nuisances while preserving defect boundaries; (bottom) 12-anchor grouped energy formulation ($E_{\mathcal{D}}$ vs.\ $E_{\mathcal{N}} \oplus E_{\mathcal{U}}$).}}}
+\fbox{\parbox[c][2.4cm][c]{0.95\linewidth}{\centering \todo{Fig.~1 placeholder: (left) S2DS inspection image containing vegetation, geodetic control point, water stain, and spalling with exposed rebar; (middle) Binary-prototype ZSAD heat maps (AdaptCLIP / MoECLIP) firing on vegetation and fiducial markers; (right) \method{} heat map suppressing nuisances while preserving defect boundaries; (bottom) 12-anchor grouped energy formulation ($E_{\mathcal{D}}$ vs.\ $E_{\mathcal{N}} \oplus E_{\mathcal{U}}$).}}}
 \caption{Comparison between binary normal/abnormal prototypes and the proposed \method{}. Benign surface structures (vegetation, fiducial markers, water stains) that trigger false alarms under binary prototypes are explicitly absorbed into the nuisance group $\mathcal{U}$ by \sag{}, while \sle{} enforces spatial continuity within the defect group $\mathcal{D}$.}
 \label{fig:teaser}
 \end{figure}
 
 \section{Related Work}
 
-\textbf{CLIP-based zero-shot anomaly detection.} Pioneered by WinCLIP~\cite{jeong2023winclip}, CLIP-based ZSAD aligns dense visual tokens with normal and abnormal text prompts. Subsequent works replace manual templates with learnable prompt embeddings: AnomalyCLIP~\cite{zhou2024anomalyclip} learns object-agnostic textual tokens with diagonally prominent attention, AdaCLIP~\cite{cao2024adaclip} introduces hybrid static-dynamic prompts, Bayes-PFL~\cite{qu2025bayespfl} models prompt distributions via normalizing flows in a Bayesian space, and AA-CLIP~\cite{ma2025aaclip} enforces residual anomaly-aware separation. To avoid distorting the pre-trained vision-language alignment, AdaptCLIP~\cite{gao2026adaptclip} attaches lightweight visual, textual, and prompt-query adapters to a frozen CLIP backbone. Recently, MoECLIP~\cite{park2026moeclip} observed that diverse patch semantics require specialized transformations, introducing a mixture of LoRA experts regularized by frozen orthogonal feature separation (FOFS) and an equiangular tight frame (ETF) loss. Further extensions incorporate frequency priors (FE-CLIP~\cite{gong2025feclip}), dynamic local visual prompts (DLVP-CLIP~\cite{zhang2026dlvpclip}), semantic attraction fields (SGNet~\cite{pan2026sgnet}), or foreground-background masks (FB-CLIP~\cite{hu2026fbclip}). Despite architectural advances, all these methods retain a binary normal-versus-abnormal decision on the text side. Even FB-CLIP only isolates the object foreground from the surrounding scene, leaving benign nuisance entities that reside directly on the structural surface unmodeled.
+\textbf{CLIP-based zero-shot anomaly detection.} WinCLIP~\cite{jeong2023winclip} aligns dense visual windows with manual normal/abnormal prompts. Subsequent works learn prompt representations: AnomalyCLIP~\cite{zhou2024anomalyclip} introduces object-agnostic prompts with diagonally prominent attention, AdaCLIP~\cite{cao2024adaclip} uses hybrid prompts, Bayes-PFL~\cite{qu2025bayespfl} models prompt distributions via normalizing flows, and AA-CLIP~\cite{ma2025aaclip} enforces residual prototype separation. AdaptCLIP~\cite{gao2026adaptclip} attaches visual, textual, and prompt-query adapters to a frozen CLIP backbone, while MoECLIP~\cite{park2026moeclip} routes patches across LoRA experts regularized by frozen orthogonal feature separation (FOFS) and an equiangular tight frame (ETF) loss. Recent variants add frequency cues (FE-CLIP~\cite{gong2025feclip}), local visual prompts (DLVP-CLIP~\cite{zhang2026dlvpclip}), semantic attraction fields (SGNet~\cite{pan2026sgnet}), or foreground masks (FB-CLIP~\cite{hu2026fbclip}). All retain a binary normal-versus-abnormal decision on the text side, leaving benign nuisance structures on the target surface unmodeled.
 
-\textbf{Infrastructure defect segmentation.} Pixel-level defect segmentation on bridges and roads is predominantly studied under full supervision. Recent architectures combine convolutional and long-range sequence modeling: SCSegamba~\cite{liu2025scsegamba} and CrackSSM~\cite{gu2026crackssm} design structure-aware state-space scanning for thin cracks, MixerCSeg~\cite{zhao2026mixercseg} decouples Mamba and attention mixers, and WPFormer~\cite{yan2025wpformer} integrates wavelet subbands with prototype-augmented queries. While effective when trained and tested on the same imaging setup, purely visual supervised segmenters overfit to source background textures and suffer severe degradation under cross-dataset deployment (Section~\ref{sec:exp}). In the zero-shot regime, SFR-Net~\cite{chen2026sfrnet} addresses multi-label sewer defect classification by steering CLIP embeddings and applying a GCN over class logits. \sag{} adapts the steering and relational graph concepts to dense pixel segmentation, introducing an explicit six-class nuisance group and grouped log-sum-exp energy scoring to resolve foreground nuisance entanglement.
+\textbf{Infrastructure defect segmentation.} Pixel-level defect segmentation on bridges and roads is predominantly studied under full supervision. Recent architectures combine convolutional and long-range sequence modeling: SCSegamba~\cite{liu2025scsegamba} and CrackSSM~\cite{gu2026crackssm} design structure-aware state-space scanning for thin cracks, MixerCSeg~\cite{zhao2026mixercseg} decouples Mamba and attention mixers, and WPFormer~\cite{yan2025wpformer} integrates wavelet subbands with prototype-augmented queries. While effective on in-distribution test splits, purely visual supervised segmenters overfit to source background textures and suffer severe degradation under cross-dataset deployment (Section~\ref{sec:exp}). In the zero-shot regime, SFR-Net~\cite{chen2026sfrnet} addresses multi-label sewer defect classification by steering CLIP embeddings and applying a GCN over class logits. \sag{} adapts the steering and relational graph concepts to dense pixel segmentation, introducing an explicit six-class nuisance group and grouped log-sum-exp energy scoring to resolve foreground nuisance entanglement.
 
 \textbf{Spatial operators in low-rank adaptation.} LoRA~\cite{hu2022lora} adapts transformer projections via low-rank matrices, and Conv-LoRA~\cite{zhong2024convlora} injects multi-scale depthwise convolutions into a single LoRA branch for SAM fine-tuning. In contrast, \sle{} embeds a single $3{\times}3$ depthwise bottleneck across multiple FOFS-orthogonalized MoE experts~\cite{shazeer2017moe,park2026moeclip}, and we demonstrate that its efficacy in zero-shot anomaly segmentation is strictly gated by structured semantic anchors.
 
 \section{Method}
-
-\subsection{Problem Formulation and MoECLIP Backbone}
-
-Given an inspection image $I \in \mathbb{R}^{3 \times H \times W}$, a zero-shot defect detector outputs a pixel-level anomaly probability map $M \in [0,1]^{H \times W}$ and an image-level anomaly score $y \in [0,1]$. During training on a source dataset $\mathcal{D}_{\mathrm{src}}$, each sample provides a binary defect union mask $G \in \{0,1\}^{H \times W}$, four category-specific defect masks $\{G_c\}_{c=1}^{4}$, and, when annotated, a benign nuisance mask $G_{\mathrm{nuis}} \in \{0,1\}^{H \times W}$. At evaluation, the model is applied directly to an unseen target dataset $\mathcal{D}_{\mathrm{tgt}}$ without target adaptation.
-
-We build upon the MoECLIP~\cite{park2026moeclip} architecture with a frozen CLIP ViT-L/14@336px encoder operating on $H{=}W{=}518$ inputs ($L = 37 \times 37 = 1369$ patch tokens, patch stride 14). Multi-level patch tokens $\{f_\ell \in \mathbb{R}^{L \times d_v}\}$ ($d_v{=}1024$) are extracted from transformer blocks $\ell \in \{6, 12, 18, 24\}$. At each layer $\ell$, $f_\ell$ is adapted by a sparsely gated Mixture-of-Experts block comprising $K{=}4$ LoRA experts of rank $r{=}8$ with Top-$2$ routing. To prevent expert representation collapse, the down-projection matrix $A_n \in \mathbb{R}^{r \times d_v}$ of expert $n \in \{0,1,2,3\}$ is initialized and frozen via Frozen Orthogonal Feature Separation (FOFS), which assigns expert $n$ an orthogonal column slice of width $d_v/K = 256$ via QR decomposition, while expert outputs are regularized by a Simplex Equiangular Tight Frame (ETF) loss $\mathcal{L}_{\mathrm{etf}}$ and a load-balancing loss $\mathcal{L}_{\mathrm{bal}}$. The adapted tokens pass through a Patch Aggregation Module (PAA) with average-pooling windows $s \in \mathcal{S} = \{1, 3, 5\}$ and a layer-specific linear projection $\mathrm{Proj}_\ell: \mathbb{R}^{d_v} \to \mathbb{R}^{d_t}$ ($d_t{=}768$), yielding $\ell_2$-normalized multi-scale patch embeddings $v_{\ell,s} \in \mathbb{R}^{L \times d_t}$ and a pooled image representation $v_{\mathrm{img}} \in \mathbb{R}^{d_t}$ via a depthwise image adapter.
-
-\subsection{Structured Anchor Graph (\sag{})}
-
-\textbf{Tri-group semantic anchor bank.} Rather than forcing all visual patterns into a binary normal/abnormal dichotomy, \sag{} constructs a structured bank of $M{=}12$ semantic anchors partitioned into three disjoint index sets:
-\begin{equation}
-\mathcal{N} = \{0\}, \quad \mathcal{U} = \{1, \dots, 6\}, \quad \mathcal{D} = \{7, \dots, 11\}.
-\end{equation}
-Here, $t_0$ represents intact undamaged concrete; $\{t_k\}_{k \in \mathcal{U}}$ encode six ubiquitous benign surface nuisances in infrastructure inspection (water stain/dampness, cast shadow/illumination boundary, surficial moss/algae, external vegetation, geodetic fiducial control point, and mortar repair patch/formwork seam); $\{t_k\}_{k=7}^{10}$ correspond to the four structural defect categories (crack, spalling, corrosion, efflorescence); and $t_{11}$ serves as a generic structural damage anchor. Each base anchor $t_k \in \mathbb{R}^{d_t}$ is obtained by encoding descriptive prompt templates with the frozen CLIP text encoder and $\ell_2$-normalizing their mean.
-
-\textbf{Margin-regularized representation steering.} Because pre-trained CLIP text embeddings are not aligned with fine-grained civil engineering textures, we adapt the anchor bank via a residual bottleneck steering network $g_{\mathrm{RS}}: \mathbb{R}^{d_t} \to \mathbb{R}^{128} \to \mathbb{R}^{d_t}$ (Linear--GELU--Dropout--Linear, zero-initialized output layer):
-\begin{equation}
-\tilde{t}_k = \frac{t_k + \beta_{\mathrm{rs}}\, g_{\mathrm{RS}}(t_k)}{\lVert t_k + \beta_{\mathrm{rs}}\, g_{\mathrm{RS}}(t_k) \rVert_2}, \quad k = 0, \dots, 11,
-\end{equation}
-with $\beta_{\mathrm{rs}} = 0.2$. To prevent the steered nuisance anchors from drifting into the defect subspace during training, we impose a dual anchor regularization loss $\mathcal{L}_{\mathrm{anc}}$ combining semantic preservation and a cross-group cosine margin $m{=}0.45$:
-\begin{equation}
-\mathcal{L}_{\mathrm{anc}} = \frac{1}{12}\sum_{k=0}^{11}\big(1 - \langle \tilde{t}_k, t_k \rangle\big) + \frac{1}{|\mathcal{U}||\mathcal{D}|}\sum_{i \in \mathcal{U}}\sum_{j \in \mathcal{D}} \max\big(0, \langle \tilde{t}_i, \tilde{t}_j \rangle - m\big).
-\end{equation}
-
-\textbf{Co-occurrence relational graph refinement.} For each layer $\ell$ and aggregation scale $s$, the initial patch-to-anchor logits are $S_{\ell,s} = \tau\, v_{\ell,s} \tilde{T}^\top \in \mathbb{R}^{L \times 12}$, where $\tau = \exp(\omega) \in [5, 50]$ is a learnable temperature and $\tilde{T} = [\tilde{t}_0; \dots; \tilde{t}_{11}]$. Bridge defects exhibit strong physical co-occurrence (e.g., spalling exposes reinforcement bars to corrosion; moisture seepage along cracks induces efflorescence). We construct a $12{\times}12$ adjacency matrix $A$ by thresholding pairwise base-anchor cosine similarities at $\langle t_i, t_j \rangle > 0.65$ and explicitly adding domain co-occurrence edges between $(\text{Spalling}, \text{Corrosion})$, $(\text{Crack}, \text{Efflorescence})$, and between each specific defect $k \in \{7..10\}$ and the generic defect anchor $11$. Let $\hat{A} = D^{-1/2}(A + I)D^{-1/2}$ denote the symmetrically normalized adjacency~\cite{kipf2017gcn}. A two-layer relational GCN refines the anchor logits across the semantic graph:
-\begin{equation}
-\hat{S}_{\ell,s} = S_{\ell,s} + \tanh(\gamma)\, \Big(\hat{A}\, \mathrm{ReLU}\big(\hat{A}\, S_{\ell,s}\, W_0\big)\Big) W_1,
-\end{equation}
-where $W_0 \in \mathbb{R}^{1 \times 32}$ and $W_1 \in \mathbb{R}^{32 \times 1}$ project along a per-anchor channel dimension and $\gamma$ is initialized to $0.2$.
-
-\textbf{Grouped log-sum-exp energy scoring.} Instead of contrasting against a single normal vector, \sag{} aggregates the refined logits $\hat{s} \in \mathbb{R}^{12}$ of each patch into three group energies via log-sum-exp ($\lse$):
-\begin{align}
-E_{\mathcal{N}} &= \hat{s}_0, \quad E_{\mathcal{U}} = \log \sum_{k \in \mathcal{U}} \exp(\hat{s}_k), \quad E_{\mathcal{D}} = \log \sum_{k \in \mathcal{D}} \exp(\hat{s}_k) + b, \\
-E_{\mathrm{bg}} &= \operatorname{logaddexp}\big(E_{\mathcal{N}}, E_{\mathcal{U}}\big) = \log\Big(\exp(E_{\mathcal{N}}) + \exp(E_{\mathcal{U}})\Big),
-\end{align}
-where $b$ is an optional group prior offset ($0$ by default). The patch anomaly probability is given by the logistic energy gap between the defect group and the structured background group:
-\begin{equation}
-P_{\ell,s} = \sigma\big(E_{\mathcal{D}} - E_{\mathrm{bg}}\big) = \frac{\exp(E_{\mathcal{D}})}{\exp(E_{\mathrm{bg}}) + \exp(E_{\mathcal{D}})}.
-\label{eq:group_prob}
-\end{equation}
-Equation~(\ref{eq:group_prob}) provides two key properties: (i) any patch matching a benign nuisance (e.g., vegetation or a survey marker) produces a large $E_{\mathcal{U}}$, inflating $E_{\mathrm{bg}}$ and driving $P_{\ell,s} \to 0$ without corrupting the intact-concrete representation $t_0$; (ii) unlike hard $\max$ pooling, $\lse$ distributes gradients across all active anchors in proportion to their responsibilities, allowing co-occurring defects to reinforce rather than suppress one another. Averaging $P_{\ell,s}$ over all layers $\ell$ and scales $s$ and bilinearly upsampling to $H{\times}W$ yields the pixel anomaly map $M$. Applying the same \sag{} refinement and energy gap to the global token $v_{\mathrm{img}}$ produces $p_{\mathrm{img}}$, and the image anomaly score is $y = 0.5\,p_{\mathrm{img}} + 0.5\,\mathrm{Top1\%}(M)$.
-
-\textbf{Stratified anti-collapse supervision.} Let $\bar{S} = \frac{1}{4|\mathcal{S}|}\sum_{\ell,s} \hat{S}_{\ell,s} \in \mathbb{R}^{L \times 12}$ be the multi-scale averaged patch logits and $\pi = \mathrm{softmax}(\bar{S}) \in \mathbb{R}^{L \times 12}$ the 12-way anchor posterior. Downsampling $G$ and $G_{\mathrm{nuis}}$ to the $37{\times}37$ patch grid via average pooling yields patch defect fraction $\rho_{\mathrm{def}}$ and nuisance fraction $\rho_{\mathrm{nuis}}$. We partition patches into defect patches ($\Omega_{\mathrm{def}}: \rho_{\mathrm{def}} \ge 0.20$), hard-negative/nuisance patches ($\Omega_{\mathrm{nuis}}: \rho_{\mathrm{def}} = 0$ and $[\rho_{\mathrm{nuis}} \ge 0.20 \text{ or } M_{\mathrm{low}} \ge 0.25]$), and pure normal patches ($\Omega_{\mathrm{norm}}$: remaining background), and supervise the group posteriors via:
-\begin{align}
-\mathcal{L}_{\mathrm{group}} &= -\frac{1}{|\Omega_{\mathrm{norm}}|}\sum_{i \in \Omega_{\mathrm{norm}}} \log \pi_{i,0} - \frac{1}{|\Omega_{\mathrm{nuis}}|}\sum_{i \in \Omega_{\mathrm{nuis}}} \log\Big(\pi_{i,0} + \sum_{k \in \mathcal{U}} \pi_{i,k}\Big) \nonumber \\
-&\quad - \frac{1}{|\Omega_{\mathrm{def}}|}\sum_{i \in \Omega_{\mathrm{def}}} \log\Big(\sum_{k \in \mathcal{D}} \pi_{i,k}\Big).
-\end{align}
-Together with 4-class image-level multi-label BCE $\mathcal{L}^{\mathrm{img}}_{4}$ and pixel-level class mask BCE $\mathcal{L}^{\mathrm{px}}_{4}$ on anomalous samples, the total \sag{} auxiliary objective is $\mathcal{L}_{\sag} = 0.4\mathcal{L}^{\mathrm{img}}_{4} + 0.3\mathcal{L}^{\mathrm{px}}_{4} + 0.2\mathcal{L}_{\mathrm{group}} + 0.1\mathcal{L}_{\mathrm{anc}}$.
-
-\subsection{Spatial Low-rank Experts (\sle{}) and Synergistic Mechanism}
-
-In standard MoECLIP, each expert $E_n(x) = B_n A_n x$ applies a point-wise linear transformation to every patch token $x_i \in \mathbb{R}^{d_v}$ in isolation. When paired with \sag{}'s 12-way fine-grained semantic competition, small local fluctuations in visual features cause adjacent tokens within the same defect region to be assigned inconsistent anchor energies, fragmenting the anomaly map and reducing region-level overlap (P-AUPRO).
-
-To endow experts with local spatial continuity while preserving FOFS orthogonality, \sle{} reshapes the low-rank bottleneck activation $z = x A_n^\top \in \mathbb{R}^{B \times L \times r}$ onto the 2D patch grid $Z \in \mathbb{R}^{B \times r \times H_p \times W_p}$ ($H_p{=}W_p{=}37$) and applies a residual depthwise-separable spatial mixing operator prior to the up-projection $B_n \in \mathbb{R}^{d_v \times r}$:
-\begin{equation}
-\tilde{Z} = Z + \tanh(\alpha_n)\, \mathrm{PWConv}_{1\times 1}\Big(\mathrm{GELU}\big(\mathrm{DWConv}_{3\times 3}(Z)\big)\Big),
-\label{eq:sle}
-\end{equation}
-followed by flattening $\tilde{Z}$ back to $\tilde{z} \in \mathbb{R}^{B \times L \times r}$ and computing $E_n(x) = \tilde{z} B_n^\top$. Here, $\mathrm{DWConv}_{3\times 3}$ is a depthwise convolution with $r{=}8$ groups, $\mathrm{PWConv}_{1\times 1}$ is a point-wise channel mixer, and $\alpha_n$ is a learnable scalar gate initialized to $0.05$ so that optimization starts smoothly from the exact pre-trained token-wise alignment. Because $r{=}8 \ll d_v{=}1024$, each \sle{} expert adds only $8{\times}9 + 8{\times}8 + 1 = 137$ parameters (548 per ViT layer; 2,192 across all four adapted layers).
-
-\textbf{Why \sle{} requires \sag{} (Synergy Analysis).} A central finding of our study is that local spatial mixing inside LoRA bottlenecks is not a universally beneficial plug-in; rather, its effect reverses sign depending on whether the semantic space is structured. Under the binary prototype (Baseline + \sle{}), background nuisances and fine defects remain entangled in the same feature channels. Applying $3{\times}3$ spatial mixing across the $37{\times}37$ grid acts as a low-pass spatial diffuser on unseparated features, overwhelming thin 1--2~px cracks with surrounding background activations and causing cross-domain P-AUPRO to collapse from 63.17\% to 39.23\%. Once \sag{} disentangles normal concrete, benign nuisances, and structural defects into orthogonalized semantic channels, \sle{} propagates consistent defect activations across neighbouring patches while smoothing out isolated single-patch nuisance spikes, simultaneously recovering region coverage and suppressing false alarms.
-
-\section{Experiments}
-\label{sec:exp}
-
-\subsection{Experimental Setup and Protocol}
-
-\textbf{Datasets.} We evaluate on two complementary bridge inspection benchmarks:
-(1) \textbf{Bridge512}~\cite{mundt2019codebrim}, constructed from CODEBRIM high-resolution bridge imagery as $512{\times}512$ non-overlapping tiles with pixel-level annotations for four structural defect categories (Crack, Spalling, Corrosion, Efflorescence), comprising 2,861 training, 400 validation, and 809 test images (508 normal, 301 anomalous).
-(2) \textbf{S2DS}~\cite{benz2022s2ds}, the untouched $1024{\times}1024$ full-image benchmark with its official split of 563 training, 87 validation, and 93 test images (13 normal, 80 anomalous). In addition to the four defect classes, S2DS provides pixel masks for two explicit benign nuisance classes---\emph{Vegetation} (21.29M pixels) and \emph{Geodetic Control Point} (1.99M pixels)---enabling direct quantitative evaluation of nuisance rejection. Following standard ViT-L/14@336px adaptation protocols~\cite{gao2026adaptclip,park2026moeclip}, images are resized to $518{\times}518$ and ground-truth masks via nearest-neighbour interpolation.
-
-\textbf{Evaluation metrics.} We report Image-level AUROC (I-AUC), F1-max (I-F1), and Average Precision (I-AP), alongside Pixel-level AUROC (P-AUC), AP (P-AP), and Per-Region Overlap (P-PRO / AUPRO) integrated over $\mathrm{FPR} \in [0, 0.30]$~\cite{bergmann2021mvtec}. On S2DS, we also report the \textbf{Nuisance False-Positive Rate (Nuis-FPR)}, defined as the percentage of annotated benign nuisance pixels misclassified as anomalous at the optimal F1 threshold $\tau^*$. Because legacy 40-threshold score-uniform AUPRO approximations vary by up to 32.8\% under strictly monotone power rescaling ($M \mapsto M^8$, from 70.68\% to 37.88\%) due to histogram peakedness, we compute P-PRO using 300 negative-pixel score quantiles over $\mathrm{FPR} \in [0, 0.30]$, which guarantees exact rank invariance ($0.00\%$ spread across monotone transforms) for all compared methods.
-
-\textbf{Implementation details and baselines.} \method{} is trained from scratch for 12 epochs using AdamW ($\mathrm{lr}{=}5{\times}10^{-4}$, cosine decay, batch size 16, seed 111), selecting the best checkpoint on validation Mean-6. We compare against six representative state-of-the-art methods: unsupervised feature reconstruction \textbf{Dinomaly} (CVPR'25)~\cite{guo2025dinomaly}, supervised defect segmenters \textbf{WPFormer} (CVPR'25)~\cite{yan2025wpformer} and \textbf{MixerCSeg} (CVPR'26)~\cite{zhao2026mixercseg}, and CLIP-based zero-shot detectors \textbf{AnomalyCLIP} (ICLR'24)~\cite{zhou2024anomalyclip}, \textbf{Bayes-PFL} (CVPR'25)~\cite{qu2025bayespfl}, \textbf{AdaptCLIP} (AAAI'26)~\cite{gao2026adaptclip}, and our baseline \textbf{MoECLIP} (CVPR'26)~\cite{park2026moeclip}. All competing methods are trained on the identical source splits using their official repositories and evaluated on the identical test splits under the unified metric suite.
-
-\subsection{In-Domain Defect Detection and Segmentation}
 
 \begin{table*}[t]
 \centering
@@ -178,20 +96,12 @@ MoECLIP~\cite{park2026moeclip} & CVPR'26 & 91.61 & 75.93 & 93.06 & 62.63 & 76.17
 \end{tabular}
 \end{table*}
 
-Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}, Table~\ref{tab:in_domain} first evaluates in-domain anomaly classification and pixel segmentation on Bridge512 and S2DS, separating anomaly-detection paradigms (unsupervised and CLIP-based methods) from fully supervised segmentation networks trained directly on dense target-domain masks. Across the two-dataset mean, \method{} achieves the highest overall image-level discrimination (\textbf{96.55\% I-AUC} and \textbf{89.19\% I-F1}) as well as the highest region-level overlap (\textbf{79.56\% P-PRO}) among all anomaly detectors:
-
-\textbf{S2DS.} \method{} ranks first on four of the six columns and second on the remaining two. Specifically, it reaches a perfect \textbf{100.00\% I-AUC} and \textbf{100.00\% I-F1}, the highest pixel AUROC of \textbf{99.31\%}, and the lowest nuisance false-positive rate of \textbf{0.15\%}. Relative to its MoECLIP backbone, \method{} boosts pixel precision by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%); relative to AdaptCLIP, it improves region overlap by \textbf{+10.61 percentage points} in P-PRO (80.35\% vs.\ 69.74\%) while cutting Nuis-FPR in half (0.15\% vs.\ 0.33\%). Notably, \method{} also outperforms the fully supervised WPFormer in image-level AUROC (100.0\% vs.\ 95.96\%) and pixel AUROC (99.31\% vs.\ 98.85\%).
-
-\textbf{Bridge512.} \method{} achieves the highest image-level detection scores across all compared methods---including supervised ones---with \textbf{93.10\% I-AUC} and \textbf{78.37\% I-F1} (+0.60\% and +1.70\% over AdaptCLIP), while substantially lifting MoECLIP's pixel precision from 62.63\% to \textbf{72.44\% P-AP} (+9.81\%) and P-PRO from 76.17\% to \textbf{78.76\%} (+2.59\%). At the category level, \method{} attains the highest Corrosion AP (82.73\%, +6.30\% over AdaptCLIP) and boosts Efflorescence AP by +17.53\% over MoECLIP (42.37\% vs.\ 24.84\%). Although AdaptCLIP's domain-specific visual adapter attains slightly higher in-domain pixel overlap on Bridge512 (74.82\% P-AP), its reliance on binary prototypes leads to severe region drop on S2DS (69.74\% P-PRO) and elevated cross-domain false alarms, whereas \method{} delivers balanced top-two accuracy across every metric on both datasets.
-
-\subsection{Cross-Domain Zero-Shot Generalization}
-
 \begin{table*}[t]
 \centering
 \caption{Bidirectional cross-domain zero-shot defect segmentation between Bridge512 and S2DS. Models are trained exclusively on the source dataset and evaluated directly on the unseen target dataset without target-domain tuning. \textbf{Nuis-FPR} ($\downarrow$) measures the false-alarm rate on annotated benign vegetation and fiducial markers in S2DS. Best results are in \textbf{bold} and second-best are \underline{underlined}.}
 \label{tab:cross_domain}
 \footnotesize
-\setlength{\tabcolsep}{4.8pt}
+\setlength{\tabcolsep}{4.4pt}
 \begin{tabular}{l l ccccccc cccccc}
 \toprule
 & & \multicolumn{7}{c}{\textbf{Bridge512 $\rightarrow$ S2DS}} & \multicolumn{6}{c}{\textbf{S2DS $\rightarrow$ Bridge512}} \\
@@ -211,7 +121,86 @@ MoECLIP~\cite{park2026moeclip} & CVPR'26 & 84.81 & 94.67 & 97.33 & 97.36 & 71.62
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset generalization when models trained on one bridge dataset are deployed directly on the other without target-domain adaptation. Because Bridge512 ($512{\times}512$ close-up tiles) and S2DS ($1024{\times}1024$ wide-angle structural views) differ substantially in spatial scale, surface weathering, and benign nuisance prevalence, cross-domain transfer directly tests whether a detector captures domain-invariant defect semantics rather than source background shortcuts.
+
+
+\subsection{Problem Formulation and MoECLIP Backbone}
+
+Given an image $I \in \mathbb{R}^{3 \times H \times W}$, a zero-shot detector outputs a pixel anomaly map $M \in [0,1]^{H \times W}$ and an image score $y \in [0,1]$, trained on a source dataset $\mathcal{D}_{\mathrm{src}}$ with defect union mask $G$, four class masks $\{G_c\}_{c=1}^{4}$, and optional nuisance mask $G_{\mathrm{nuis}}$, and tested directly on an unseen target dataset $\mathcal{D}_{\mathrm{tgt}}$. We adopt MoECLIP~\cite{park2026moeclip} as the backbone: a frozen CLIP ViT-L/14@336px encoder ($H{=}W{=}518$, $L{=}37{\times}37{=}1369$ tokens) extracts features $\{f_\ell \in \mathbb{R}^{L \times d_v}\}$ ($d_v{=}1024$) from blocks $\ell \in \{6, 12, 18, 24\}$. Each layer applies $K{=}4$ LoRA experts ($r{=}8$, Top-2 routing) whose down-projections $A_n \in \mathbb{R}^{r \times d_v}$ are frozen on orthogonal 256-dim column slices via QR decomposition (FOFS) and regularized by ETF ($\mathcal{L}_{\mathrm{etf}}$) and load-balancing ($\mathcal{L}_{\mathrm{bal}}$) losses. Multi-scale patch aggregation ($s \in \mathcal{S}{=}\{1,3,5\}$) and linear projections $\mathrm{Proj}_\ell: \mathbb{R}^{d_v} \to \mathbb{R}^{d_t}$ ($d_t{=}768$) yield $\ell_2$-normalized patch embeddings $v_{\ell,s} \in \mathbb{R}^{L \times d_t}$ and an image token $v_{\mathrm{img}} \in \mathbb{R}^{d_t}$.
+
+\subsection{Structured Anchor Graph (\sag{})}
+
+\textbf{Tri-group semantic anchor bank.} Rather than forcing all visual patterns into a binary normal/abnormal dichotomy, \sag{} constructs a structured bank of $M{=}12$ semantic anchors partitioned into three disjoint groups $\mathcal{N}{=}\{0\}$, $\mathcal{U}{=}\{1,\dots,6\}$, and $\mathcal{D}{=}\{7,\dots,11\}$. Here, $t_0$ represents intact undamaged concrete; $\{t_k\}_{k \in \mathcal{U}}$ encode six ubiquitous benign surface nuisances in infrastructure inspection (water stain/dampness, cast shadow/illumination boundary, surficial moss/algae, external vegetation, geodetic fiducial control point, and mortar repair patch/formwork seam); $\{t_k\}_{k=7}^{10}$ correspond to the four structural defect categories (crack, spalling, corrosion, efflorescence); and $t_{11}$ serves as a generic structural damage anchor. Each base anchor $t_k \in \mathbb{R}^{d_t}$ is the $\ell_2$-normalized mean of descriptive CLIP text templates.
+
+\textbf{Margin-regularized representation steering.} To adapt generic CLIP text embeddings to civil engineering textures, we steer the anchor bank via a residual bottleneck $g_{\mathrm{RS}}: \mathbb{R}^{d_t} \to \mathbb{R}^{128} \to \mathbb{R}^{d_t}$ (Linear--GELU--Dropout--Linear):
+\begin{equation}
+\tilde{t}_k = \frac{t_k + \beta_{\mathrm{rs}}\, g_{\mathrm{RS}}(t_k)}{\lVert t_k + \beta_{\mathrm{rs}}\, g_{\mathrm{RS}}(t_k) \rVert_2}, \quad k = 0, \dots, 11,
+\end{equation}
+with $\beta_{\mathrm{rs}}{=}0.2$. To prevent steered nuisance anchors from drifting into the defect subspace, we impose an anchor regularization loss $\mathcal{L}_{\mathrm{anc}}$ with cross-group cosine margin $m{=}0.45$:
+\begin{align}
+\mathcal{L}_{\mathrm{anc}} &= \frac{1}{12}\sum_{k=0}^{11}\big(1 - \langle \tilde{t}_k, t_k \rangle\big) \nonumber \\
+&\quad + \frac{1}{|\mathcal{U}||\mathcal{D}|}\sum_{i \in \mathcal{U}}\sum_{j \in \mathcal{D}} \max\big(0, \langle \tilde{t}_i, \tilde{t}_j \rangle - m\big).
+\end{align}
+
+\textbf{Co-occurrence relational graph refinement.} For each layer $\ell$ and aggregation scale $s$, the initial patch-to-anchor logits are $S_{\ell,s} = \tau\, v_{\ell,s} \tilde{T}^\top \in \mathbb{R}^{L \times 12}$, where $\tau = \exp(\omega) \in [5, 50]$ is a learnable temperature and $\tilde{T} = [\tilde{t}_0; \dots; \tilde{t}_{11}]$. To capture physical co-occurrence (e.g., exposed rebar rusts inside spalling; leaching follows cracks), we build a $12{\times}12$ adjacency matrix $A$ by thresholding base-anchor cosine similarities at $0.65$ and adding edges for $(\text{Spalling}, \text{Corrosion})$, $(\text{Crack}, \text{Efflorescence})$, and each defect $k \in \{7..10\}$ to the generic anchor $11$. With $\hat{A} = D^{-1/2}(A + I)D^{-1/2}$~\cite{kipf2017gcn}, a two-layer relational GCN refines the logits:
+\begin{equation}
+\hat{S}_{\ell,s} = S_{\ell,s} + \tanh(\gamma)\, \Big(\hat{A}\, \mathrm{ReLU}\big(\hat{A}\, S_{\ell,s}\, W_0\big)\Big) W_1,
+\end{equation}
+where $W_0 \in \mathbb{R}^{1 \times 32}$ and $W_1 \in \mathbb{R}^{32 \times 1}$ project along a per-anchor channel dimension and $\gamma$ is initialized to $0.2$.
+
+\textbf{Grouped log-sum-exp energy scoring.} Instead of contrasting against a single normal vector, \sag{} aggregates the refined logits $\hat{s} \in \mathbb{R}^{12}$ of each patch into three group energies via log-sum-exp ($\lse$):
+\begin{equation}
+E_{\mathcal{N}} = \hat{s}_0, \quad E_{\mathcal{U}} = \lse_{k \in \mathcal{U}}(\hat{s}_k), \quad E_{\mathcal{D}} = \lse_{k \in \mathcal{D}}(\hat{s}_k) + b,
+\end{equation}
+where $b$ is an optional group prior ($0$ by default) and the composite background energy is $E_{\mathrm{bg}} = \operatorname{logaddexp}(E_{\mathcal{N}}, E_{\mathcal{U}}) = \log(\exp E_{\mathcal{N}} + \exp E_{\mathcal{U}})$. The patch anomaly probability is governed by the logistic energy gap between the defect group and the structured background:
+\begin{equation}
+P_{\ell,s} = \sigma\big(E_{\mathcal{D}} - E_{\mathrm{bg}}\big) = \frac{\exp(E_{\mathcal{D}})}{\exp(E_{\mathrm{bg}}) + \exp(E_{\mathcal{D}})}.
+\label{eq:group_prob}
+\end{equation}
+In Eq.~(\ref{eq:group_prob}), any patch matching a benign nuisance raises $E_{\mathcal{U}}$, inflating $E_{\mathrm{bg}}$ and driving $P_{\ell,s} \to 0$ without corrupting $t_0$; meanwhile, $\lse$ distributes gradients across all active group members so co-occurring defects reinforce one another. Averaging $P_{\ell,s}$ across $\ell$ and $s$ and upsampling to $H{\times}W$ gives $M$. Applying the same \sag{} scoring to $v_{\mathrm{img}}$ gives $p_{\mathrm{img}}$, and $y = 0.5\,p_{\mathrm{img}} + 0.5\,\mathrm{Top1\%}(M)$.
+
+\textbf{Stratified anti-collapse supervision.} Let $\bar{S} = \frac{1}{4|\mathcal{S}|}\sum_{\ell,s} \hat{S}_{\ell,s} \in \mathbb{R}^{L \times 12}$ be the multi-scale averaged patch logits and $\pi = \mathrm{softmax}(\bar{S}) \in \mathbb{R}^{L \times 12}$ the 12-way anchor posterior. Downsampling $G$ and $G_{\mathrm{nuis}}$ to the $37{\times}37$ patch grid via average pooling yields patch defect fraction $\rho_{\mathrm{def}}$ and nuisance fraction $\rho_{\mathrm{nuis}}$. We partition patches into defect patches ($\Omega_{\mathrm{def}}: \rho_{\mathrm{def}} \ge 0.20$), hard-negative/nuisance patches ($\Omega_{\mathrm{nuis}}: \rho_{\mathrm{def}} = 0$ and $[\rho_{\mathrm{nuis}} \ge 0.20 \text{ or } M_{\mathrm{low}} \ge 0.25]$), and pure normal patches ($\Omega_{\mathrm{norm}}$: remaining background), and supervise the group posteriors via:
+\begin{align}
+\mathcal{L}_{\mathrm{group}} &= -\frac{1}{|\Omega_{\mathrm{norm}}|}\!\sum_{i \in \Omega_{\mathrm{norm}}}\!\! \log \pi_{i,0} - \frac{1}{|\Omega_{\mathrm{def}}|}\!\sum_{i \in \Omega_{\mathrm{def}}}\!\! \log \!\sum_{k \in \mathcal{D}}\! \pi_{i,k} \nonumber \\
+&\quad - \frac{1}{|\Omega_{\mathrm{nuis}}|}\sum_{i \in \Omega_{\mathrm{nuis}}} \log\Big(\pi_{i,0} + \sum_{k \in \mathcal{U}} \pi_{i,k}\Big).
+\end{align}
+Together with 4-class image-level multi-label BCE $\mathcal{L}^{\mathrm{img}}_{4}$ and pixel-level class mask BCE $\mathcal{L}^{\mathrm{px}}_{4}$ on anomalous samples, the total \sag{} auxiliary objective is $\mathcal{L}_{\sag} = 0.4\mathcal{L}^{\mathrm{img}}_{4} + 0.3\mathcal{L}^{\mathrm{px}}_{4} + 0.2\mathcal{L}_{\mathrm{group}} + 0.1\mathcal{L}_{\mathrm{anc}}$.
+
+\subsection{Spatial Low-rank Experts (\sle{}) and Synergistic Mechanism}
+
+
+In standard MoECLIP, each expert $E_n(x) = B_n A_n x$ applies a point-wise linear transformation to every patch token $x_i \in \mathbb{R}^{d_v}$ in isolation. When paired with \sag{}'s 12-way fine-grained semantic competition, small local fluctuations in visual features cause adjacent tokens within the same defect region to be assigned inconsistent anchor energies, fragmenting the anomaly map and reducing region-level overlap (P-AUPRO).
+
+To endow experts with local spatial continuity while preserving FOFS orthogonality, \sle{} reshapes the low-rank bottleneck activation $z = x A_n^\top \in \mathbb{R}^{B \times L \times r}$ onto the 2D patch grid $Z \in \mathbb{R}^{B \times r \times H_p \times W_p}$ ($H_p{=}W_p{=}37$) and applies a residual depthwise-separable spatial mixing operator prior to the up-projection $B_n \in \mathbb{R}^{d_v \times r}$:
+\begin{equation}
+\tilde{Z} = Z + \tanh(\alpha_n)\, \mathrm{PW}_{1\times 1}\big(\mathrm{GELU}(\mathrm{DW}_{3\times 3}(Z))\big),
+\label{eq:sle}
+\end{equation}
+followed by flattening $\tilde{Z}$ back to $\tilde{z} \in \mathbb{R}^{B \times L \times r}$ and computing $E_n(x) = \tilde{z} B_n^\top$. Here, $\mathrm{DW}_{3\times 3}$ is a depthwise $3{\times}3$ convolution with $r{=}8$ groups, $\mathrm{PW}_{1\times 1}$ is a $1{\times}1$ point-wise projection, and $\alpha_n$ is a learnable scalar gate initialized to $0.05$ so that optimization starts smoothly from the exact pre-trained token-wise alignment. Because $r{=}8 \ll d_v{=}1024$, each \sle{} expert adds only $8{\times}9 + 8{\times}8 + 1 = 137$ parameters (548 per ViT layer; 2,192 across all four adapted layers).
+
+\textbf{Why \sle{} requires \sag{} (Synergy Analysis).} A central finding of our study is that local spatial mixing inside LoRA bottlenecks is not a universally beneficial plug-in; rather, its effect reverses sign depending on whether the semantic space is structured. Under the binary prototype (Baseline + \sle{}), background nuisances and fine defects remain entangled in the same feature channels. Applying $3{\times}3$ spatial mixing across the $37{\times}37$ grid acts as a low-pass spatial diffuser on unseparated features, overwhelming thin 1--2~px cracks with surrounding background activations and causing cross-domain P-AUPRO to collapse from 63.17\% to 39.23\%. Once \sag{} disentangles normal concrete, benign nuisances, and structural defects into orthogonalized semantic channels, \sle{} propagates consistent defect activations across neighbouring patches while smoothing out isolated single-patch nuisance spikes, simultaneously recovering region coverage and suppressing false alarms.
+
+\section{Experiments}
+\label{sec:exp}
+
+
+\subsection{Experimental Setup and Protocol}
+
+\textbf{Datasets.} We evaluate on two bridge benchmarks: (1) \textbf{Bridge512}~\cite{mundt2019codebrim}, built from CODEBRIM as $512{\times}512$ tiles with pixel masks for Crack, Spalling, Corrosion, and Efflorescence (2,861 train, 400 val, and 809 test images; 301 anomalous). (2) \textbf{S2DS}~\cite{benz2022s2ds}, the official $1024{\times}1024$ benchmark (563 train, 87 val, and 93 test images; 80 anomalous), which includes pixel masks for the four defect classes and two explicit benign nuisance classes (\emph{Vegetation}, 21.29M~px; \emph{Geodetic Control Point}, 1.99M~px). Following standard ViT-L/14@336px protocols~\cite{gao2026adaptclip,park2026moeclip}, images and masks are resized to $518{\times}518$.
+
+\textbf{Metrics and baselines.} We report Image-level AUROC (I-AUC), F1-max (I-F1), and AP (I-AP); Pixel-level AUROC (P-AUC), AP (P-AP), and Per-Region Overlap (P-PRO / AUPRO) over $\mathrm{FPR} \in [0, 0.30]$~\cite{bergmann2021mvtec}; and on S2DS, the \textbf{Nuisance False-Positive Rate (Nuis-FPR)} at the optimal F1 threshold $\tau^*$. Because legacy 40-threshold score-uniform AUPRO varies by 32.8\% under monotone rescaling ($M \mapsto M^8$, $70.68\% \to 37.88\%$), we compute P-PRO using 300 negative-pixel score quantiles over $[0, 0.30]$ ($0.00\%$ spread across monotone transforms). \method{} is trained for 12 epochs with AdamW ($\mathrm{lr}{=}5{\times}10^{-4}$, batch 16, seed 111) and compared against \textbf{Dinomaly}~\cite{guo2025dinomaly}, \textbf{WPFormer}~\cite{yan2025wpformer}, \textbf{MixerCSeg}~\cite{zhao2026mixercseg}, \textbf{AnomalyCLIP}~\cite{zhou2024anomalyclip}, \textbf{Bayes-PFL}~\cite{qu2025bayespfl}, \textbf{AdaptCLIP}~\cite{gao2026adaptclip}, and \textbf{MoECLIP}~\cite{park2026moeclip} trained on identical splits.
+
+\subsection{In-Domain Defect Detection and Segmentation}
+
+
+Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}, Table~\ref{tab:in_domain} compares in-domain performance on Bridge512 and S2DS, listing fully supervised segmentation networks at the bottom as an upper-bound reference. Across the two datasets, \method{} achieves the highest mean I-AUC (\textbf{96.55\%}), I-F1 (\textbf{89.19\%}), and P-PRO (\textbf{79.56\%}) among all anomaly detectors:
+
+\textbf{S2DS.} \method{} ranks first on four of the six columns and second on the remaining two. Specifically, it reaches a perfect \textbf{100.00\% I-AUC} and \textbf{100.00\% I-F1}, the highest pixel AUROC of \textbf{99.31\%}, and the lowest nuisance false-positive rate of \textbf{0.15\%}. Relative to its MoECLIP backbone, \method{} boosts pixel precision by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%); relative to AdaptCLIP, it improves region overlap by \textbf{+10.61 percentage points} in P-PRO (80.35\% vs.\ 69.74\%) while cutting Nuis-FPR in half (0.15\% vs.\ 0.33\%). Notably, \method{} also outperforms the fully supervised WPFormer in image-level AUROC (100.0\% vs.\ 95.96\%) and pixel AUROC (99.31\% vs.\ 98.85\%).
+
+\textbf{Bridge512.} \method{} achieves the highest image-level detection scores across all compared methods---including supervised ones---with \textbf{93.10\% I-AUC} and \textbf{78.37\% I-F1} (+0.60\% and +1.70\% over AdaptCLIP), while substantially lifting MoECLIP's pixel precision from 62.63\% to \textbf{72.44\% P-AP} (+9.81\%) and P-PRO from 76.17\% to \textbf{78.76\%} (+2.59\%). At the category level, \method{} attains the highest Corrosion AP (82.73\%, +6.30\% over AdaptCLIP) and boosts Efflorescence AP by +17.53\% over MoECLIP (42.37\% vs.\ 24.84\%). Although AdaptCLIP's domain-specific visual adapter attains slightly higher in-domain pixel overlap on Bridge512 (74.82\% P-AP), its reliance on binary prototypes leads to severe region drop on S2DS (69.74\% P-PRO) and elevated cross-domain false alarms, whereas \method{} delivers balanced top-two accuracy across every metric on both datasets.
+
+\subsection{Cross-Domain Zero-Shot Generalization}
+
+Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset transfer between Bridge512 ($512{\times}512$ close-up tiles) and S2DS ($1024{\times}1024$ wide-angle structural views), testing whether detectors learn domain-invariant defect semantics rather than background shortcuts.
 
 \textbf{Bridge512 $\rightarrow$ S2DS.} \method{} establishes a decisive lead across image-level discrimination, pixel-level precision, and nuisance rejection. It reaches \textbf{97.69\% I-AUC}, \textbf{96.86\% I-F1}, \textbf{99.64\% I-AP}, and \textbf{79.54\% P-AP}, outperforming MoECLIP by +12.88\% I-AUC and +7.92\% P-AP, and surpassing AdaptCLIP by +17.69\% I-AUC. Per-category evaluation confirms that \method{} achieves the highest zero-shot AP on Corrosion (57.13\%, +24.23\% over AdaptCLIP) and Crack (1.30\%), while boosting Spalling AP by +12.75\% (73.40\% vs.\ 60.65\%) and Efflorescence AP by +8.70\% over MoECLIP, and achieving the highest large-defect region overlap (78.51\% $\mathrm{AUPRO}_{\mathrm{large}}$). Crucially, \method{} drives Nuis-FPR down to \textbf{0.83\%}---a \textbf{4.4$\times$ reduction} over MoECLIP (3.62\%), a \textbf{3.8$\times$ reduction} over AdaptCLIP (3.18\%), and an \textbf{8.6$\times$--11.1$\times$ reduction} over Bayes-PFL (7.17\%) and AnomalyCLIP (9.25\%). While the supervised WPFormer exhibits low Nuis-FPR (0.56\%) and high crack-fragment overlap (68.47\% P-PRO) by outputting conservative crack lines, its pixel precision collapses to 45.02\% P-AP and 73.74\% P-AUC under domain shift.
 
@@ -222,40 +211,36 @@ Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset generalization wh
 
 \begin{table}[t]
 \centering
-\caption{Ablation study of \sag{} and \sle{}. Left: Mean-7 across the four scenarios and their macro average (Macro). Right: region overlap (P-PRO), small-region overlap (Small), and nuisance false-positive rate (FPR) on Bridge512$\rightarrow$S2DS.}
+\caption{Ablation study of \sag{} and \sle{} trained on Bridge512 and evaluated on in-domain Bridge512 and cross-domain Bridge512$\rightarrow$S2DS transfer.}
 \label{tab:ablation}
-\scriptsize
+\footnotesize
 \setlength{\tabcolsep}{2.0pt}
-\resizebox{\columnwidth}{!}{%
-\begin{tabular}{l ccccc ccc}
+\begin{tabular}{l cc cccc}
 \toprule
-& \multicolumn{5}{c}{\textbf{Four-Scenario Mean-7}} & \multicolumn{3}{c}{\textbf{B512$\rightarrow$S2DS}} \\
-\cmidrule(lr){2-6} \cmidrule(lr){7-9}
-Variant & B512 & B$\rightarrow$S & S2DS & S$\rightarrow$B & \textbf{Macro} & P-PRO & Small & FPR$\downarrow$ \\
+& \multicolumn{2}{c}{\textbf{Bridge512}} & \multicolumn{4}{c}{\textbf{Bridge512 $\rightarrow$ S2DS}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-7}
+Variant & I-AUC & P-PRO & I-AUC & P-AP & P-PRO & FPR$\downarrow$ \\
 \midrule
-Baseline & 77.45 & 82.55 & 91.07 & 64.35 & 78.86 & \textbf{63.17} & \textbf{56.45} & 3.62 \\
-+ \sle{} & 76.53 & 81.27 & 91.37 & 64.19 & 78.34 & 39.23 & 28.45 & 3.76 \\
-+ \sag{} & 81.12 & 83.62 & 93.24 & 65.58 & 80.89 & 52.44 & 42.28 & 4.90 \\
-+ \sag{} + \sle{}-Het & 81.18 & 84.66 & 93.42 & 65.84 & \underline{81.28} & 57.73 & 47.90 & 3.18 \\
-\textbf{+ \sag{} + \sle{} (\method{})} & \textbf{81.21} & \textbf{86.58} & \textbf{93.59} & \textbf{66.10} & \textbf{81.87} & \underline{59.25} & \underline{49.93} & \textbf{0.83} \\
+Baseline & 91.61 & 76.17 & 84.81 & 71.62 & \textbf{63.17} & 3.62 \\
++ \sle{} & 90.69 & 68.92 & 89.62 & 76.79 & 39.23 & 3.76 \\
++ \sag{} & 93.06 & 77.52 & 87.69 & 79.13 & 52.44 & 4.90 \\
++ \sag{} + \sle{}-Het & 92.57 & 77.15 & \underline{88.85} & \textbf{80.12} & 57.73 & \underline{3.18} \\
+\textbf{+ \sag{} + \sle{} (\method{})} & \textbf{93.10} & \textbf{78.76} & \textbf{97.69} & \underline{79.54} & \underline{59.25} & \textbf{0.83} \\
 \bottomrule
-\end{tabular}%
-}
+\end{tabular}
 \end{table}
 
-Table~\ref{tab:ablation} dissects the individual and joint contributions of \sag{} and \sle{} across all four scenarios using the comprehensive 7-metric average (Mean-7) and detailed cross-domain localization indicators.
+\textbf{Effect of \sag{} alone.} In Table~\ref{tab:ablation}, introducing the 12-anchor \sag{} (Baseline $\to$ +\sag{}) substantially improves in-domain discrimination and pixel precision, lifting Bridge512 I-AUC from 91.61\% to 93.06\%, P-AP from 62.63\% to 72.67\% (+10.04\%), and cross-domain P-AP from 71.62\% to 79.13\% (+7.51\%). However, fine-grained 12-way competition across independent tokens fragments spatial responses on the unseen target domain, lowering cross-domain P-PRO from 63.17\% to 52.44\%.
 
-\textbf{Effect of \sag{} alone.} Introducing the 12-anchor Structured Anchor Graph (Baseline $\to$ +\sag{}) yields a consistent improvement across every scenario, raising the four-scenario Macro-7 by \textbf{+2.03 points} (78.86\% $\to$ 80.89\%). On Bridge512, pixel precision jumps by +10.04\% P-AP (62.63\% $\to$ 72.67\%) and efflorescence AP nearly doubles from 24.84\% to 42.72\%. However, fine-grained 12-way competition across independent tokens fragments spatial responses, lowering cross-domain P-PRO from 63.17\% to 52.44\% and small-region overlap ($\mathrm{AUPRO}_{\mathrm{small}}$) from 56.45\% to 42.28\%.
+\textbf{Non-additive synergy between \sag{} and \sle{}.} Comparing rows 2 and 5 of Table~\ref{tab:ablation} reveals a striking sign reversal. Injecting \sle{} into the binary-prototype baseline (+\sle{}) is \emph{detrimental}: it reduces in-domain Bridge512 P-PRO by $-7.25$ points (76.17\% $\to$ 68.92\%) and collapses cross-domain P-PRO by $-23.94$ points (63.17\% $\to$ 39.23\%). Without semantic disentanglement, $3{\times}3$ token mixing averages noisy background activations into weak defect responses. Conversely, when applied on top of \sag{} (+\sag{} $\to$ \method{}), the exact same 2,192-parameter operator lifts in-domain P-PRO to \textbf{78.76\%} (highest overall), boosts cross-domain I-AUC by \textbf{+10.00 points} (87.69\% $\to$ 97.69\%), recovers cross-domain P-PRO by \textbf{+6.81 points} (52.44\% $\to$ 59.25\%), and slashes Nuis-FPR from 4.90\% to \textbf{0.83\%}. This confirms that semantic disentanglement via \sag{} is a necessary precondition for spatial bottleneck mixing.
 
-\textbf{Non-additive synergy between \sag{} and \sle{}.} A striking contrast emerges when comparing rows 2 and 5 of Table~\ref{tab:ablation}. Injecting \sle{} into the binary-prototype baseline (Baseline + \sle{}) is \emph{detrimental}: it reduces Macro-7 to 78.34\%, causes Bridge512 in-domain $\mathrm{AUPRO}_{\mathrm{small}}$ to drop from 68.14\% to 50.48\%, and collapses cross-domain P-PRO by $-23.94$ points (63.17\% $\to$ 39.23\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by $-28.00$ points (56.45\% $\to$ 28.45\%). In the absence of semantic disentanglement, $3{\times}3$ token mixing averages noisy background activations into weak defect responses. Conversely, when applied on top of \sag{} (+\sag{} $\to$ \method{}), the exact same 2,192-parameter operator boosts cross-domain Mean-7 by \textbf{+2.96 points} (83.62\% $\to$ 86.58\%), recovers cross-domain P-PRO by \textbf{+6.81 points} (52.44\% $\to$ 59.25\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by \textbf{+7.65 points}, and slashes Nuis-FPR from 4.90\% to \textbf{0.83\%}. This sign reversal confirms that semantic disentanglement via \sag{} is a necessary precondition for spatial bottleneck mixing.
-
-\textbf{Homogeneous vs.\ heterogeneous spatial experts.} We also compare \sle{} against a morphology-specialized heterogeneous variant (+\sag{} + \sle{}-Het, row 4) that assigns four distinct operators to the four experts ($1{\times}3/3{\times}1$ strip convolutions, edge-gated $3{\times}3$ conv, dilated $3{\times}3$ conv, and high-pass contrast filter). While $\sle{}\text{-Het}$ improves over +\sag{} alone (Macro-7 81.28\% vs.\ 80.89\%), our homogeneous \sle{} outperforms it across all four scenarios (81.87\% Macro-7, 0.83\% vs.\ 3.18\% Nuis-FPR). Because FOFS already partitions the $K{=}4$ experts into orthogonal feature subspaces under uniform ETF routing, equipping every expert with a general learnable $3{\times}3$ depthwise-separable kernel (which subsumes directional strip and difference filters as special cases) allows data-driven specialization without rigid subspace-morphology mismatch.
+\textbf{Homogeneous vs.\ heterogeneous spatial experts.} Compared against a heterogeneous variant (+\sag{} + \sle{}-Het, row 4) with four hand-crafted expert kernels (strip, edge-gated, dilated, and high-pass), homogeneous \sle{} achieves superior in-domain (93.10\% vs.\ 92.57\% I-AUC; 78.76\% vs.\ 77.15\% P-PRO) and cross-domain performance (97.69\% vs.\ 88.85\% I-AUC; 0.83\% vs.\ 3.18\% FPR). Because FOFS already partitions the $K{=}4$ experts into orthogonal feature subspaces under uniform ETF routing, a general learnable $3{\times}3$ depthwise kernel enables data-driven specialization without rigid subspace-morphology mismatch.
 
 \subsection{Qualitative Analysis}
 
 \begin{figure}[t]
 \centering
-\fbox{\parbox[c][3.2cm][c]{0.95\linewidth}{\centering \todo{Fig.~2 placeholder: Qualitative comparisons on Bridge512 $\rightarrow$ S2DS transfer and Bridge512 in-domain. Columns: Input Image, Ground Truth (defects + green/blue nuisance masks), AnomalyCLIP, AdaptCLIP, MoECLIP, and \method{} (Ours).}}}
+\fbox{\parbox[c][2.3cm][c]{0.95\linewidth}{\centering \todo{Fig.~2 placeholder: Qualitative comparisons on Bridge512 $\rightarrow$ S2DS transfer and Bridge512 in-domain. Columns: Input Image, Ground Truth (defects + green/blue nuisance masks), AnomalyCLIP, AdaptCLIP, MoECLIP, and \method{} (Ours).}}}
 \caption{Qualitative anomaly maps on S2DS and Bridge512. Binary-prototype detectors activate strongly on vegetation and geodetic survey markers, whereas \method{} suppresses benign nuisances and produces contiguous activations across co-occurring spalling and rebar corrosion.}
 \label{fig:qual}
 \end{figure}
@@ -266,7 +251,83 @@ Fig.~\ref{fig:qual} illustrates the visual behavior driving our quantitative gai
 
 We presented \method{} for zero-shot defect segmentation on infrastructure surfaces, challenging the binary normal-versus-abnormal prototype assumption of existing CLIP-based detectors. By organizing twelve semantic anchors into normal, benign nuisance, and defect groups refined over a co-occurrence relational graph and scored via grouped log-sum-exp energies (\sag{}), \method{} gives ubiquitous surface nuisances an explicit semantic sink inside the background energy. By embedding a lightweight $3{\times}3$ depthwise spatial mixing bottleneck inside FOFS-orthogonalized MoE experts (\sle{}), \method{} resolves the spatial fragmentation induced by fine-grained anchor competition. Extensive experiments across in-domain and bidirectional cross-domain benchmarks demonstrate that \sag{} and \sle{} interact synergistically, achieving state-of-the-art anomaly detection accuracy and reducing cross-domain nuisance false alarms to 0.83\%.
 
-\bibliographystyle{IEEEtran}
-\bibliography{refs}
+\begin{thebibliography}{10}
+
+\bibitem{jeong2023winclip}
+J.~Jeong \emph{et~al.}, ``{WinCLIP}: Zero-/few-shot anomaly classification and segmentation,'' in \emph{CVPR}, 2023, pp. 19606--19616.
+
+\bibitem{zhou2024anomalyclip}
+Q.~Zhou, G.~Pang, Y.~Tian, S.~He, and J.~Chen, ``{AnomalyCLIP}: Object-agnostic prompt learning for zero-shot anomaly detection,'' in \emph{ICLR}, 2024.
+
+\bibitem{qu2025bayespfl}
+Z.~Qu \emph{et~al.}, ``Bayesian prompt flow learning for zero-shot anomaly detection,'' in \emph{CVPR}, 2025, pp. 30398--30408.
+
+\bibitem{gao2026adaptclip}
+B.-B. Gao \emph{et~al.}, ``{AdaptCLIP}: Adapting {CLIP} for universal visual anomaly detection,'' in \emph{AAAI}, 2026.
+
+\bibitem{park2026moeclip}
+J.~Y. Park, J.~Seo, M.~Kang, and Y.~R. Park, ``{MoECLIP}: Patch-specialized experts for zero-shot anomaly detection,'' in \emph{CVPR}, 2026, pp. 35534--35544.
+
+\bibitem{bergmann2021mvtec}
+P.~Bergmann, K.~Batzner, M.~Fauser, D.~Sattlegger, and C.~Steger, ``The {MVTec} anomaly detection dataset: A comprehensive real-world dataset for unsupervised anomaly detection,'' \emph{Int. J. Comput. Vis. (IJCV)}, vol. 129, no.~4, pp. 1038--1059, 2021.
+
+\bibitem{zou2022visa}
+Y.~Zou, J.~Jeong, L.~Pemula, D.~Zhang, and O.~Dabeer, ``{SPot-the-Difference} self-supervised pre-training for anomaly detection and segmentation,'' in \emph{ECCV}, 2022, pp. 392--408.
+
+\bibitem{benz2022s2ds}
+C.~Benz and V.~Rodehorst, ``Image-based control point detection and structural defect segmentation on concrete surfaces,'' in \emph{DAGM GCPR}, 2022, pp. 390--406.
+
+\bibitem{mundt2019codebrim}
+M.~Mundt, S.~Majumder, S.~Murali, P.~Panetsos, and V.~Ramesh, ``Meta-learning convolutional neural architectures for multi-target concrete defect classification with the {CODEBRIM} dataset,'' in \emph{CVPR}, 2019, pp. 11196--11205.
+
+\bibitem{cao2024adaclip}
+Y.~Cao \emph{et~al.}, ``{AdaCLIP}: Adapting {CLIP} with hybrid learnable prompts for zero-shot anomaly detection,'' in \emph{ECCV}, 2024, pp. 55--72.
+
+\bibitem{ma2025aaclip}
+W.~Ma \emph{et~al.}, ``{AA-CLIP}: Enhancing zero-shot anomaly detection via anomaly-aware {CLIP},'' in \emph{CVPR}, 2025, pp. 4744--4754.
+
+\bibitem{gong2025feclip}
+T.~Gong, Q.~Chu, B.~Liu, W.~Zhou, and N.~Yu, ``{FE-CLIP}: Frequency enhanced {CLIP} model for zero-shot anomaly detection and segmentation,'' in \emph{ICCV}, 2025, pp. 21220--21230.
+
+\bibitem{zhang2026dlvpclip}
+G.~Zhang and L.~Zhang, ``{DLVP-CLIP}: Enhancing fine-grained zero-shot anomaly detection via dynamic local visual prompting,'' in \emph{CVPR}, 2026, pp. 35524--35533.
+
+\bibitem{pan2026sgnet}
+Y.~Pan \emph{et~al.}, ``From attraction to equilibrium: Physics-inspired semantic gravitons for zero-shot anomaly detection,'' in \emph{CVPR}, 2026, pp. 35628--35637.
+
+\bibitem{hu2026fbclip}
+M.~Hu \emph{et~al.}, ``{FB-CLIP}: Fine-grained zero-shot anomaly detection with foreground-background disentanglement,'' in \emph{CVPR}, 2026, pp. 35659--35669.
+
+\bibitem{liu2025scsegamba}
+H.~Liu, C.~Jia, F.~Shi, X.~Cheng, and S.~Chen, ``{SCSegamba}: Lightweight structure-aware vision {Mamba} for crack segmentation in structures,'' in \emph{CVPR}, 2025, pp. 29406--29416.
+
+\bibitem{gu2026crackssm}
+Y.~Gu \emph{et~al.}, ``{CrackSSM}: Reviving {SSMs} for crack segmentation via dynamic scanning,'' in \emph{CVPR}, 2026, pp. 10721--10730.
+
+\bibitem{zhao2026mixercseg}
+Z.~Zhao, Z.~Ding, P.~Niu, W.~Sun, and F.~Guo, ``{MixerCSeg}: An efficient mixer architecture for crack segmentation via decoupled {Mamba} attention,'' in \emph{CVPR}, 2026, pp. 17969--17978.
+
+\bibitem{yan2025wpformer}
+F.~Yan \emph{et~al.}, ``Wavelet and prototype augmented query-based transformer for pixel-level surface defect detection,'' in \emph{CVPR}, 2025, pp. 23860--23869.
+
+\bibitem{chen2026sfrnet}
+Z.-M. Chen, X.~Huang, Y.~Ge, and Y.~Li, ``{SFR-Net}: Steering-fusion-refining network in multi-label zero-shot sewer defect detection,'' in \emph{CVPR}, 2026, pp. 41636--41645.
+
+\bibitem{hu2022lora}
+E.~J. Hu \emph{et~al.}, ``{LoRA}: Low-rank adaptation of large language models,'' in \emph{ICLR}, 2022.
+
+\bibitem{zhong2024convlora}
+Z.~Zhong, Z.~Tang, T.~He, H.~Fang, and C.~Yuan, ``Convolution meets {LoRA}: Parameter efficient finetuning for segment anything model,'' in \emph{ICLR}, 2024.
+
+\bibitem{shazeer2017moe}
+N.~Shazeer \emph{et~al.}, ``Outrageously large neural networks: The sparsely-gated mixture-of-experts layer,'' in \emph{ICLR}, 2017.
+
+\bibitem{kipf2017gcn}
+T.~N. Kipf and M.~Welling, ``Semi-supervised classification with graph convolutional networks,'' in \emph{ICLR}, 2017.
+
+\bibitem{guo2025dinomaly}
+J.~Guo \emph{et~al.}, ``{Dinomaly}: The less is more philosophy in multi-class unsupervised anomaly detection,'' in \emph{CVPR}, 2025, pp. 20405--20415.
+
+\end{thebibliography}
 
 \end{document}
