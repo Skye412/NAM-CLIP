@@ -136,7 +136,7 @@ To endow experts with local spatial continuity while preserving FOFS orthogonali
 \end{equation}
 followed by flattening $\tilde{Z}$ back to $\tilde{z} \in \mathbb{R}^{B \times L \times r}$ and computing $E_n(x) = \tilde{z} B_n^\top$. Here, $\mathrm{DWConv}_{3\times 3}$ is a depthwise convolution with $r{=}8$ groups, $\mathrm{PWConv}_{1\times 1}$ is a point-wise channel mixer, and $\alpha_n$ is a learnable scalar gate initialized to $0.05$ so that optimization starts smoothly from the exact pre-trained token-wise alignment. Because $r{=}8 \ll d_v{=}1024$, each \sle{} expert adds only $8{\times}9 + 8{\times}8 + 1 = 137$ parameters (548 per ViT layer; 2,192 across all four adapted layers).
 
-\textbf{Why \sle{} requires \sag{} (Synergy Analysis).} A central finding of our study is that local spatial mixing inside LoRA bottlenecks is not a universally beneficial plug-in; rather, its effect reverses sign depending on whether the semantic space is structured. Under the binary prototype ($M_0 + \sle{}$), background nuisances and fine defects remain entangled in the same feature channels. Applying $3{\times}3$ spatial mixing across the $37{\times}37$ grid acts as a low-pass spatial diffuser on unseparated features, overwhelming thin 1--2~px cracks with surrounding background activations and causing cross-domain P-AUPRO to collapse from 63.17\% to 39.23\%. Once \sag{} disentangles normal concrete, benign nuisances, and structural defects into orthogonalized semantic channels, \sle{} propagates consistent defect activations across neighbouring patches while smoothing out isolated single-patch nuisance spikes, simultaneously recovering region coverage and suppressing false alarms.
+\textbf{Why \sle{} requires \sag{} (Synergy Analysis).} A central finding of our study is that local spatial mixing inside LoRA bottlenecks is not a universally beneficial plug-in; rather, its effect reverses sign depending on whether the semantic space is structured. Under the binary prototype (Baseline + \sle{}), background nuisances and fine defects remain entangled in the same feature channels. Applying $3{\times}3$ spatial mixing across the $37{\times}37$ grid acts as a low-pass spatial diffuser on unseparated features, overwhelming thin 1--2~px cracks with surrounding background activations and causing cross-domain P-AUPRO to collapse from 63.17\% to 39.23\%. Once \sag{} disentangles normal concrete, benign nuisances, and structural defects into orthogonalized semantic channels, \sle{} propagates consistent defect activations across neighbouring patches while smoothing out isolated single-patch nuisance spikes, simultaneously recovering region coverage and suppressing false alarms.
 
 \section{Experiments}
 \label{sec:exp}
@@ -145,7 +145,7 @@ followed by flattening $\tilde{Z}$ back to $\tilde{z} \in \mathbb{R}^{B \times L
 
 \textbf{Datasets.} We evaluate on two complementary bridge inspection benchmarks:
 (1) \textbf{Bridge512}~\cite{mundt2019codebrim}, constructed from CODEBRIM high-resolution bridge imagery as $512{\times}512$ non-overlapping tiles with pixel-level annotations for four structural defect categories (Crack, Spalling, Corrosion, Efflorescence), comprising 2,861 training, 400 validation, and 809 test images (508 normal, 301 anomalous).
-(2) \textbf{Official S2DS}~\cite{benz2022s2ds}, the untouched $1024{\times}1024$ full-image benchmark with its official split of 563 training, 87 validation, and 93 test images (13 normal, 80 anomalous). In addition to the four defect classes, S2DS provides pixel masks for two explicit benign nuisance classes---\emph{Vegetation} (21.29M pixels) and \emph{Geodetic Control Point} (1.99M pixels)---enabling direct quantitative evaluation of nuisance rejection. Following standard ViT-L/14@336px adaptation protocols~\cite{gao2026adaptclip,park2026moeclip}, images are resized to $518{\times}518$ and ground-truth masks via nearest-neighbour interpolation.
+(2) \textbf{S2DS}~\cite{benz2022s2ds}, the untouched $1024{\times}1024$ full-image benchmark with its official split of 563 training, 87 validation, and 93 test images (13 normal, 80 anomalous). In addition to the four defect classes, S2DS provides pixel masks for two explicit benign nuisance classes---\emph{Vegetation} (21.29M pixels) and \emph{Geodetic Control Point} (1.99M pixels)---enabling direct quantitative evaluation of nuisance rejection. Following standard ViT-L/14@336px adaptation protocols~\cite{gao2026adaptclip,park2026moeclip}, images are resized to $518{\times}518$ and ground-truth masks via nearest-neighbour interpolation.
 
 \textbf{Evaluation metrics.} We report Image-level AUROC (I-AUC), F1-max (I-F1), and Average Precision (I-AP), alongside Pixel-level AUROC (P-AUC), AP (P-AP), and Per-Region Overlap (P-PRO / AUPRO) integrated over $\mathrm{FPR} \in [0, 0.30]$~\cite{bergmann2021mvtec}. On S2DS, we also report the \textbf{Nuisance False-Positive Rate (Nuis-FPR)}, defined as the percentage of annotated benign nuisance pixels misclassified as anomalous at the optimal F1 threshold $\tau^*$. Because legacy 40-threshold score-uniform AUPRO approximations vary by up to 32.8\% under strictly monotone power rescaling ($M \mapsto M^8$, from 70.68\% to 37.88\%) due to histogram peakedness, we compute P-PRO using 300 negative-pixel score quantiles over $\mathrm{FPR} \in [0, 0.30]$, which guarantees exact rank invariance ($0.00\%$ spread across monotone transforms) for all compared methods.
 
@@ -155,32 +155,32 @@ followed by flattening $\tilde{Z}$ back to $\tilde{z} \in \mathbb{R}^{B \times L
 
 \begin{table*}[t]
 \centering
-\caption{In-domain anomaly classification and defect segmentation on Bridge512 and Official S2DS ($1024{\times}1024$), plus two-dataset mean across unsupervised and CLIP-based anomaly detectors (top). Fully supervised segmentation networks trained with dense target-domain pixel masks are listed at the bottom in gray as an upper-bound reference. Best anomaly-detection results are in \textbf{bold} and second-best are \underline{underlined}.}
+\caption{In-domain anomaly classification and defect segmentation on Bridge512 and S2DS. Unsupervised and CLIP-based anomaly detectors are compared at the top; fully supervised segmentation networks trained with dense target-domain masks are listed at the bottom in gray as an upper-bound reference. Best anomaly-detection results are in \textbf{bold} and second-best are \underline{underlined}.}
 \label{tab:in_domain}
 \footnotesize
-\setlength{\tabcolsep}{3.6pt}
-\begin{tabular}{l l | cc ccc | cc ccc c | ccc}
+\setlength{\tabcolsep}{5.5pt}
+\begin{tabular}{l l ccccc cccccc}
 \toprule
-& & \multicolumn{5}{c|}{\textbf{Bridge512 (In-Domain)}} & \multicolumn{6}{c|}{\textbf{Official S2DS (In-Domain)}} & \multicolumn{3}{c}{\textbf{In-Domain Mean}} \\
-\cmidrule(lr){3-7} \cmidrule(lr){8-13} \cmidrule(lr){14-16}
-Method & Venue & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & FPR$\downarrow$ & I-AUC & I-F1 & P-PRO \\
+& & \multicolumn{5}{c}{\textbf{Bridge512}} & \multicolumn{6}{c}{\textbf{S2DS}} \\
+\cmidrule(lr){3-7} \cmidrule(lr){8-13}
+Method & Venue & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & I-AUC & I-F1 & P-AUC & P-AP & P-PRO & FPR$\downarrow$ \\
 \midrule
-Dinomaly~\cite{guo2025dinomaly} & CVPR'25 & 81.01 & 66.38 & 83.55 & 27.94 & 58.19 & 71.06 & 96.39 & 87.08 & 25.89 & 20.53 & 45.46 & 76.04 & 81.39 & 39.36 \\
-AnomalyCLIP~\cite{zhou2024anomalyclip} & ICLR'24 & 82.28 & 66.33 & 91.98 & 56.98 & 69.53 & 90.58 & 97.53 & 97.56 & 77.17 & 43.73 & 23.38 & 86.43 & 81.93 & 56.63 \\
-Bayes-PFL~\cite{qu2025bayespfl} & CVPR'25 & 91.33 & 75.65 & 93.23 & 62.79 & 75.20 & 99.71 & 98.77 & 99.17 & \textbf{93.47} & 42.20 & \underline{0.17} & 95.52 & 87.21 & 58.70 \\
-AdaptCLIP~\cite{gao2026adaptclip} & AAAI'26 & \underline{92.50} & \underline{76.67} & \textbf{95.69} & \textbf{74.82} & \textbf{80.02} & \underline{99.90} & \underline{99.38} & \underline{99.26} & 91.86 & 69.74 & 0.33 & \underline{96.20} & \underline{88.03} & 74.88 \\
-MoECLIP (Baseline)~\cite{park2026moeclip} & CVPR'26 & 91.61 & 75.93 & 93.06 & 62.63 & 76.17 & \underline{99.90} & \underline{99.38} & 98.55 & 82.28 & \textbf{81.50} & 0.22 & 95.76 & 87.66 & \underline{78.84} \\
-\textbf{\method{} (Ours)} & --- & \textbf{93.10} & \textbf{78.37} & \underline{95.29} & \underline{72.44} & \underline{78.76} & \textbf{100.0} & \textbf{100.0} & \textbf{99.31} & \underline{92.11} & \underline{80.35} & \textbf{0.15} & \textbf{96.55} & \textbf{89.19} & \textbf{79.56} \\
+Dinomaly~\cite{guo2025dinomaly} & CVPR'25 & 81.01 & 66.38 & 83.55 & 27.94 & 58.19 & 71.06 & 96.39 & 87.08 & 25.89 & 20.53 & 45.46 \\
+AnomalyCLIP~\cite{zhou2024anomalyclip} & ICLR'24 & 82.28 & 66.33 & 91.98 & 56.98 & 69.53 & 90.58 & 97.53 & 97.56 & 77.17 & 43.73 & 23.38 \\
+Bayes-PFL~\cite{qu2025bayespfl} & CVPR'25 & 91.33 & 75.65 & 93.23 & 62.79 & 75.20 & 99.71 & 98.77 & 99.17 & \textbf{93.47} & 42.20 & \underline{0.17} \\
+AdaptCLIP~\cite{gao2026adaptclip} & AAAI'26 & \underline{92.50} & \underline{76.67} & \textbf{95.69} & \textbf{74.82} & \textbf{80.02} & \underline{99.90} & \underline{99.38} & \underline{99.26} & 91.86 & 69.74 & 0.33 \\
+MoECLIP~\cite{park2026moeclip} & CVPR'26 & 91.61 & 75.93 & 93.06 & 62.63 & 76.17 & \underline{99.90} & \underline{99.38} & 98.55 & 82.28 & \textbf{81.50} & 0.22 \\
+\textbf{\method{} (Ours)} & --- & \textbf{93.10} & \textbf{78.37} & \underline{95.29} & \underline{72.44} & \underline{78.76} & \textbf{100.0} & \textbf{100.0} & \textbf{99.31} & \underline{92.11} & \underline{80.35} & \textbf{0.15} \\
 \midrule
-\textcolor{gray}{MixerCSeg (Sup.)~\cite{zhao2026mixercseg}} & \textcolor{gray}{CVPR'26} & \textcolor{gray}{77.52} & \textcolor{gray}{61.81} & \textcolor{gray}{90.60} & \textcolor{gray}{51.95} & \textcolor{gray}{59.04} & \textcolor{gray}{58.17} & \textcolor{gray}{92.49} & \textcolor{gray}{93.76} & \textcolor{gray}{58.53} & \textcolor{gray}{23.27} & \textcolor{gray}{21.87} & \textcolor{gray}{67.85} & \textcolor{gray}{77.15} & \textcolor{gray}{41.16} \\
-\textcolor{gray}{WPFormer (Sup.)~\cite{yan2025wpformer}} & \textcolor{gray}{CVPR'25} & \textcolor{gray}{88.79} & \textcolor{gray}{74.33} & \textcolor{gray}{79.08} & \textcolor{gray}{59.51} & \textcolor{gray}{78.82} & \textcolor{gray}{95.96} & \textcolor{gray}{99.38} & \textcolor{gray}{98.85} & \textcolor{gray}{95.96} & \textcolor{gray}{81.42} & \textcolor{gray}{0.14} & \textcolor{gray}{92.38} & \textcolor{gray}{86.86} & \textcolor{gray}{80.12} \\
+\textcolor{gray}{MixerCSeg (Sup.)~\cite{zhao2026mixercseg}} & \textcolor{gray}{CVPR'26} & \textcolor{gray}{77.52} & \textcolor{gray}{61.81} & \textcolor{gray}{90.60} & \textcolor{gray}{51.95} & \textcolor{gray}{59.04} & \textcolor{gray}{58.17} & \textcolor{gray}{92.49} & \textcolor{gray}{93.76} & \textcolor{gray}{58.53} & \textcolor{gray}{23.27} & \textcolor{gray}{21.87} \\
+\textcolor{gray}{WPFormer (Sup.)~\cite{yan2025wpformer}} & \textcolor{gray}{CVPR'25} & \textcolor{gray}{88.79} & \textcolor{gray}{74.33} & \textcolor{gray}{79.08} & \textcolor{gray}{59.51} & \textcolor{gray}{78.82} & \textcolor{gray}{95.96} & \textcolor{gray}{99.38} & \textcolor{gray}{98.85} & \textcolor{gray}{95.96} & \textcolor{gray}{81.42} & \textcolor{gray}{0.14} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}, Table~\ref{tab:in_domain} first evaluates in-domain anomaly classification and pixel segmentation on Bridge512 and Official S2DS, separating anomaly-detection paradigms (unsupervised and CLIP-based methods) from fully supervised segmentation networks trained directly on dense target-domain masks. Across the two-dataset mean, \method{} achieves the highest overall image-level discrimination (\textbf{96.55\% I-AUC} and \textbf{89.19\% I-F1}) as well as the highest region-level overlap (\textbf{79.56\% P-PRO}) among all anomaly detectors:
+Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}, Table~\ref{tab:in_domain} first evaluates in-domain anomaly classification and pixel segmentation on Bridge512 and S2DS, separating anomaly-detection paradigms (unsupervised and CLIP-based methods) from fully supervised segmentation networks trained directly on dense target-domain masks. Across the two-dataset mean, \method{} achieves the highest overall image-level discrimination (\textbf{96.55\% I-AUC} and \textbf{89.19\% I-F1}) as well as the highest region-level overlap (\textbf{79.56\% P-PRO}) among all anomaly detectors:
 
-\textbf{Official S2DS.} \method{} ranks first on four of the six columns and second on the remaining two. Specifically, it reaches a perfect \textbf{100.00\% I-AUC} and \textbf{100.00\% I-F1}, the highest pixel AUROC of \textbf{99.31\%}, and the lowest nuisance false-positive rate of \textbf{0.15\%}. Relative to its MoECLIP backbone, \method{} boosts pixel precision by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%); relative to AdaptCLIP, it improves region overlap by \textbf{+10.61 percentage points} in P-PRO (80.35\% vs.\ 69.74\%) while cutting Nuis-FPR in half (0.15\% vs.\ 0.33\%). Notably, \method{} also outperforms the fully supervised WPFormer in image-level AUROC (100.0\% vs.\ 95.96\%) and pixel AUROC (99.31\% vs.\ 98.85\%).
+\textbf{S2DS.} \method{} ranks first on four of the six columns and second on the remaining two. Specifically, it reaches a perfect \textbf{100.00\% I-AUC} and \textbf{100.00\% I-F1}, the highest pixel AUROC of \textbf{99.31\%}, and the lowest nuisance false-positive rate of \textbf{0.15\%}. Relative to its MoECLIP backbone, \method{} boosts pixel precision by \textbf{+9.83\% P-AP} (92.11\% vs.\ 82.28\%); relative to AdaptCLIP, it improves region overlap by \textbf{+10.61 percentage points} in P-PRO (80.35\% vs.\ 69.74\%) while cutting Nuis-FPR in half (0.15\% vs.\ 0.33\%). Notably, \method{} also outperforms the fully supervised WPFormer in image-level AUROC (100.0\% vs.\ 95.96\%) and pixel AUROC (99.31\% vs.\ 98.85\%).
 
 \textbf{Bridge512.} \method{} achieves the highest image-level detection scores across all compared methods---including supervised ones---with \textbf{93.10\% I-AUC} and \textbf{78.37\% I-F1} (+0.60\% and +1.70\% over AdaptCLIP), while substantially lifting MoECLIP's pixel precision from 62.63\% to \textbf{72.44\% P-AP} (+9.81\%) and P-PRO from 76.17\% to \textbf{78.76\%} (+2.59\%). At the category level, \method{} attains the highest Corrosion AP (82.73\%, +6.30\% over AdaptCLIP) and boosts Efflorescence AP by +17.53\% over MoECLIP (42.37\% vs.\ 24.84\%). Although AdaptCLIP's domain-specific visual adapter attains slightly higher in-domain pixel overlap on Bridge512 (74.82\% P-AP), its reliance on binary prototypes leads to severe region drop on S2DS (69.74\% P-PRO) and elevated cross-domain false alarms, whereas \method{} delivers balanced top-two accuracy across every metric on both datasets.
 
@@ -188,13 +188,13 @@ Following standard benchmark conventions~\cite{gao2026adaptclip,park2026moeclip}
 
 \begin{table*}[t]
 \centering
-\caption{Bidirectional cross-domain zero-shot defect segmentation between Bridge512 and Official S2DS ($1024{\times}1024$). Models are trained exclusively on the source dataset and evaluated directly on the unseen target dataset without target-domain tuning. \textbf{Nuis-FPR} ($\downarrow$) measures the false-alarm rate on annotated benign vegetation and fiducial markers in S2DS. Best results are in \textbf{bold} and second-best are \underline{underlined}.}
+\caption{Bidirectional cross-domain zero-shot defect segmentation between Bridge512 and S2DS. Models are trained exclusively on the source dataset and evaluated directly on the unseen target dataset without target-domain tuning. \textbf{Nuis-FPR} ($\downarrow$) measures the false-alarm rate on annotated benign vegetation and fiducial markers in S2DS. Best results are in \textbf{bold} and second-best are \underline{underlined}.}
 \label{tab:cross_domain}
 \footnotesize
-\setlength{\tabcolsep}{4.2pt}
-\begin{tabular}{l l | ccc cccc | ccc ccc}
+\setlength{\tabcolsep}{4.8pt}
+\begin{tabular}{l l ccccccc cccccc}
 \toprule
-& & \multicolumn{7}{c|}{\textbf{Bridge512 $\rightarrow$ Official S2DS (Zero-Shot Transfer)}} & \multicolumn{6}{c}{\textbf{Official S2DS $\rightarrow$ Bridge512 (Zero-Shot Transfer)}} \\
+& & \multicolumn{7}{c}{\textbf{Bridge512 $\rightarrow$ S2DS}} & \multicolumn{6}{c}{\textbf{S2DS $\rightarrow$ Bridge512}} \\
 \cmidrule(lr){3-9} \cmidrule(lr){10-15}
 Method & Venue & I-AUC & I-F1 & I-AP & P-AUC & P-AP & P-PRO & Nuis-FPR$\downarrow$ & I-AUC & I-F1 & I-AP & P-AUC & P-AP & P-PRO \\
 \midrule
@@ -204,57 +204,59 @@ WPFormer~\cite{yan2025wpformer} & CVPR'25 & 87.12 & 95.12 & 97.03 & 73.74 & 45.0
 AnomalyCLIP~\cite{zhou2024anomalyclip} & ICLR'24 & 71.25 & 92.49 & 94.65 & 96.21 & 67.42 & 41.53 & 9.25 & 64.08 & 51.42 & 44.44 & 85.73 & 44.05 & 62.01 \\
 Bayes-PFL~\cite{qu2025bayespfl} & CVPR'25 & \underline{87.98} & \underline{95.06} & \underline{97.49} & 96.68 & 73.41 & 31.99 & 7.17 & \underline{80.75} & \underline{65.56} & \underline{64.35} & 79.97 & 42.89 & 50.15 \\
 AdaptCLIP~\cite{gao2026adaptclip} & AAAI'26 & 80.00 & 94.12 & 96.02 & \textbf{98.32} & \underline{79.07} & 55.11 & 3.18 & 78.11 & 63.49 & 59.99 & \textbf{86.09} & \textbf{47.67} & 62.14 \\
-MoECLIP (Baseline)~\cite{park2026moeclip} & CVPR'26 & 84.81 & 94.67 & 97.33 & 97.36 & 71.62 & \underline{63.17} & 3.62 & 80.53 & 64.58 & 61.74 & \underline{85.79} & 43.74 & \underline{67.59} \\
+MoECLIP~\cite{park2026moeclip} & CVPR'26 & 84.81 & 94.67 & 97.33 & 97.36 & 71.62 & \underline{63.17} & 3.62 & 80.53 & 64.58 & 61.74 & \underline{85.79} & 43.74 & \underline{67.59} \\
 \midrule
 \textbf{\method{} (Ours)} & --- & \textbf{97.69} & \textbf{96.86} & \textbf{99.64} & \underline{97.77} & \textbf{79.54} & 59.25 & \underline{0.83} & \textbf{82.84} & \textbf{67.94} & \textbf{64.90} & 85.62 & \underline{46.50} & \textbf{68.60} \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset generalization when models trained on one bridge dataset are deployed directly on the other without target-domain adaptation. Because Bridge512 ($512{\times}512$ close-up tiles) and Official S2DS ($1024{\times}1024$ wide-angle structural views) differ substantially in spatial scale, surface weathering, and benign nuisance prevalence, cross-domain transfer directly tests whether a detector captures domain-invariant defect semantics rather than source background shortcuts.
+Table~\ref{tab:cross_domain} evaluates zero-shot cross-dataset generalization when models trained on one bridge dataset are deployed directly on the other without target-domain adaptation. Because Bridge512 ($512{\times}512$ close-up tiles) and S2DS ($1024{\times}1024$ wide-angle structural views) differ substantially in spatial scale, surface weathering, and benign nuisance prevalence, cross-domain transfer directly tests whether a detector captures domain-invariant defect semantics rather than source background shortcuts.
 
-\textbf{Bridge512 $\rightarrow$ Official S2DS.} \method{} establishes a decisive lead across image-level discrimination, pixel-level precision, and nuisance rejection. It reaches \textbf{97.69\% I-AUC}, \textbf{96.86\% I-F1}, \textbf{99.64\% I-AP}, and \textbf{79.54\% P-AP}, outperforming MoECLIP by +12.88\% I-AUC and +7.92\% P-AP, and surpassing AdaptCLIP by +17.69\% I-AUC. Per-category evaluation confirms that \method{} achieves the highest zero-shot AP on Corrosion (57.13\%, +24.23\% over AdaptCLIP) and Crack (1.30\%), while boosting Spalling AP by +12.75\% (73.40\% vs.\ 60.65\%) and Efflorescence AP by +8.70\% over MoECLIP, and achieving the highest large-defect region overlap (78.51\% $\mathrm{AUPRO}_{\mathrm{large}}$). Crucially, \method{} drives Nuis-FPR down to \textbf{0.83\%}---a \textbf{4.4$\times$ reduction} over MoECLIP (3.62\%), a \textbf{3.8$\times$ reduction} over AdaptCLIP (3.18\%), and an \textbf{8.6$\times$--11.1$\times$ reduction} over Bayes-PFL (7.17\%) and AnomalyCLIP (9.25\%). While the supervised WPFormer exhibits low Nuis-FPR (0.56\%) and high crack-fragment overlap (68.47\% P-PRO) by outputting conservative crack lines, its pixel precision collapses to 45.02\% P-AP and 73.74\% P-AUC under domain shift.
+\textbf{Bridge512 $\rightarrow$ S2DS.} \method{} establishes a decisive lead across image-level discrimination, pixel-level precision, and nuisance rejection. It reaches \textbf{97.69\% I-AUC}, \textbf{96.86\% I-F1}, \textbf{99.64\% I-AP}, and \textbf{79.54\% P-AP}, outperforming MoECLIP by +12.88\% I-AUC and +7.92\% P-AP, and surpassing AdaptCLIP by +17.69\% I-AUC. Per-category evaluation confirms that \method{} achieves the highest zero-shot AP on Corrosion (57.13\%, +24.23\% over AdaptCLIP) and Crack (1.30\%), while boosting Spalling AP by +12.75\% (73.40\% vs.\ 60.65\%) and Efflorescence AP by +8.70\% over MoECLIP, and achieving the highest large-defect region overlap (78.51\% $\mathrm{AUPRO}_{\mathrm{large}}$). Crucially, \method{} drives Nuis-FPR down to \textbf{0.83\%}---a \textbf{4.4$\times$ reduction} over MoECLIP (3.62\%), a \textbf{3.8$\times$ reduction} over AdaptCLIP (3.18\%), and an \textbf{8.6$\times$--11.1$\times$ reduction} over Bayes-PFL (7.17\%) and AnomalyCLIP (9.25\%). While the supervised WPFormer exhibits low Nuis-FPR (0.56\%) and high crack-fragment overlap (68.47\% P-PRO) by outputting conservative crack lines, its pixel precision collapses to 45.02\% P-AP and 73.74\% P-AUC under domain shift.
 
-\textbf{Official S2DS $\rightarrow$ Bridge512.} Trained on only 563 S2DS images and tested zero-shot on 809 Bridge512 images, \method{} again leads four of the six metrics (\textbf{82.84\% I-AUC}, \textbf{67.94\% I-F1}, \textbf{64.90\% I-AP}, and \textbf{68.60\% P-PRO}), outperforming AdaptCLIP by +4.73\% I-AUC and +6.46\% P-PRO (and by +11.70\% on Crack AUPRO, 75.12\% vs.\ 63.42\%), whereas supervised networks (WPFormer and MixerCSeg) drop to 24.64\% and 30.19\% P-AP.
+\textbf{S2DS $\rightarrow$ Bridge512.} Trained on only 563 S2DS images and tested zero-shot on 809 Bridge512 images, \method{} again leads four of the six metrics (\textbf{82.84\% I-AUC}, \textbf{67.94\% I-F1}, \textbf{64.90\% I-AP}, and \textbf{68.60\% P-PRO}), outperforming AdaptCLIP by +4.73\% I-AUC and +6.46\% P-PRO (and by +11.70\% on Crack AUPRO, 75.12\% vs.\ 63.42\%), whereas supervised networks (WPFormer and MixerCSeg) drop to 24.64\% and 30.19\% P-AP.
 
 \subsection{Ablation Study and Synergistic Interaction Analysis}
 \label{sec:ablation}
 
 \begin{table}[t]
 \centering
-\caption{Factorial $2{\times}2$ ablation of \sag{} and \sle{}, plus homogeneous vs.\ heterogeneous expert kernel comparison. \textbf{Macro-7} denotes the four-scenario average of all seven image and pixel metrics.}
+\caption{Ablation study of \sag{} and \sle{}. Left: Mean-7 across the four scenarios and their macro average (Macro). Right: region overlap (P-PRO), small-region overlap (Small), and nuisance false-positive rate (FPR) on Bridge512$\rightarrow$S2DS.}
 \label{tab:ablation}
 \scriptsize
-\setlength{\tabcolsep}{2.2pt}
-\begin{tabular}{cc l | cccc c | ccc}
+\setlength{\tabcolsep}{2.0pt}
+\resizebox{\columnwidth}{!}{%
+\begin{tabular}{l ccccc ccc}
 \toprule
-& & & \multicolumn{5}{c|}{\textbf{Four-Scenario Mean-7}} & \multicolumn{3}{c}{\textbf{B512 $\rightarrow$ S2DS Detail}} \\
-\cmidrule(lr){4-8} \cmidrule(lr){9-11}
-\sag{} & \sle{} & Variant & B512 & B$\rightarrow$S & S2DS & S$\rightarrow$B & \textbf{Macro-7} & P-PRO & Small & FPR$\downarrow$ \\
+& \multicolumn{5}{c}{\textbf{Four-Scenario Mean-7}} & \multicolumn{3}{c}{\textbf{B512$\rightarrow$S2DS}} \\
+\cmidrule(lr){2-6} \cmidrule(lr){7-9}
+Variant & B512 & B$\rightarrow$S & S2DS & S$\rightarrow$B & \textbf{Macro} & P-PRO & Small & FPR$\downarrow$ \\
 \midrule
- &  & MoECLIP ($M_0$) & 77.45 & 82.55 & 91.07 & 64.35 & 78.86 & \textbf{63.17} & \textbf{56.45} & 3.62 \\
- & \checkmark & $M_0$ + \sle{} (Homo) & 76.53 & 81.27 & 91.37 & 64.19 & 78.34 & 39.23 & 28.45 & 3.76 \\
-\checkmark &  & $M_0$ + \sag{} ($M_1$) & 81.12 & 83.62 & 93.24 & 65.58 & 80.89 & 52.44 & 42.28 & 4.90 \\
-\checkmark & $\diamond$ & $M_1$ + \sle{}-Het & 81.18 & 84.66 & 93.42 & 65.84 & \underline{81.28} & 57.73 & 47.90 & 3.18 \\
-\checkmark & \checkmark & \textbf{\method{} (Ours)} & \textbf{81.21} & \textbf{86.58} & \textbf{93.59} & \textbf{66.10} & \textbf{81.87} & \underline{59.25} & \underline{49.93} & \textbf{0.83} \\
+Baseline & 77.45 & 82.55 & 91.07 & 64.35 & 78.86 & \textbf{63.17} & \textbf{56.45} & 3.62 \\
++ \sle{} & 76.53 & 81.27 & 91.37 & 64.19 & 78.34 & 39.23 & 28.45 & 3.76 \\
++ \sag{} & 81.12 & 83.62 & 93.24 & 65.58 & 80.89 & 52.44 & 42.28 & 4.90 \\
++ \sag{} + \sle{}-Het & 81.18 & 84.66 & 93.42 & 65.84 & \underline{81.28} & 57.73 & 47.90 & 3.18 \\
+\textbf{+ \sag{} + \sle{} (\method{})} & \textbf{81.21} & \textbf{86.58} & \textbf{93.59} & \textbf{66.10} & \textbf{81.87} & \underline{59.25} & \underline{49.93} & \textbf{0.83} \\
 \bottomrule
-\end{tabular}
+\end{tabular}%
+}
 \end{table}
 
 Table~\ref{tab:ablation} dissects the individual and joint contributions of \sag{} and \sle{} across all four scenarios using the comprehensive 7-metric average (Mean-7) and detailed cross-domain localization indicators.
 
-\textbf{Effect of \sag{} alone.} Introducing the 12-anchor Structured Anchor Graph ($M_0 \to M_1$) yields a consistent improvement across every scenario, raising the four-scenario Macro-7 by \textbf{+2.03 points} (78.86\% $\to$ 80.89\%). On Bridge512, pixel precision jumps by +10.04\% P-AP (62.63\% $\to$ 72.67\%) and efflorescence AP nearly doubles from 24.84\% to 42.72\%. However, fine-grained 12-way competition across independent tokens fragments spatial responses, lowering cross-domain P-PRO from 63.17\% to 52.44\% and small-region overlap ($\mathrm{AUPRO}_{\mathrm{small}}$) from 56.45\% to 42.28\%.
+\textbf{Effect of \sag{} alone.} Introducing the 12-anchor Structured Anchor Graph (Baseline $\to$ +\sag{}) yields a consistent improvement across every scenario, raising the four-scenario Macro-7 by \textbf{+2.03 points} (78.86\% $\to$ 80.89\%). On Bridge512, pixel precision jumps by +10.04\% P-AP (62.63\% $\to$ 72.67\%) and efflorescence AP nearly doubles from 24.84\% to 42.72\%. However, fine-grained 12-way competition across independent tokens fragments spatial responses, lowering cross-domain P-PRO from 63.17\% to 52.44\% and small-region overlap ($\mathrm{AUPRO}_{\mathrm{small}}$) from 56.45\% to 42.28\%.
 
-\textbf{Non-additive synergy between \sag{} and \sle{}.} A striking contrast emerges when comparing rows 2 and 5 of Table~\ref{tab:ablation}. Injecting \sle{} into the binary-prototype baseline ($M_0 + \sle{}$) is \emph{detrimental}: it reduces Macro-7 to 78.34\%, causes Bridge512 in-domain $\mathrm{AUPRO}_{\mathrm{small}}$ to drop from 68.14\% to 50.48\%, and collapses cross-domain P-PRO by $-23.94$ points (63.17\% $\to$ 39.23\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by $-28.00$ points (56.45\% $\to$ 28.45\%). In the absence of semantic disentanglement, $3{\times}3$ token mixing averages noisy background activations into weak defect responses. Conversely, when applied on top of \sag{} ($M_1 \to \method{}$), the exact same 2,192-parameter operator boosts cross-domain Mean-7 by \textbf{+2.96 points} (83.62\% $\to$ 86.58\%), recovers cross-domain P-PRO by \textbf{+6.81 points} (52.44\% $\to$ 59.25\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by \textbf{+7.65 points}, and slashes Nuis-FPR from 4.90\% to \textbf{0.83\%}. This sign reversal confirms that semantic disentanglement via \sag{} is a necessary precondition for spatial bottleneck mixing.
+\textbf{Non-additive synergy between \sag{} and \sle{}.} A striking contrast emerges when comparing rows 2 and 5 of Table~\ref{tab:ablation}. Injecting \sle{} into the binary-prototype baseline (Baseline + \sle{}) is \emph{detrimental}: it reduces Macro-7 to 78.34\%, causes Bridge512 in-domain $\mathrm{AUPRO}_{\mathrm{small}}$ to drop from 68.14\% to 50.48\%, and collapses cross-domain P-PRO by $-23.94$ points (63.17\% $\to$ 39.23\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by $-28.00$ points (56.45\% $\to$ 28.45\%). In the absence of semantic disentanglement, $3{\times}3$ token mixing averages noisy background activations into weak defect responses. Conversely, when applied on top of \sag{} (+\sag{} $\to$ \method{}), the exact same 2,192-parameter operator boosts cross-domain Mean-7 by \textbf{+2.96 points} (83.62\% $\to$ 86.58\%), recovers cross-domain P-PRO by \textbf{+6.81 points} (52.44\% $\to$ 59.25\%) and $\mathrm{AUPRO}_{\mathrm{small}}$ by \textbf{+7.65 points}, and slashes Nuis-FPR from 4.90\% to \textbf{0.83\%}. This sign reversal confirms that semantic disentanglement via \sag{} is a necessary precondition for spatial bottleneck mixing.
 
-\textbf{Homogeneous vs.\ heterogeneous spatial experts.} We also compare \sle{} against a morphology-specialized heterogeneous variant ($M_1 + \sle{}\text{-Het}$, row 4) that assigns four distinct operators to the four experts ($1{\times}3/3{\times}1$ strip convolutions, edge-gated $3{\times}3$ conv, dilated $3{\times}3$ conv, and high-pass contrast filter). While $\sle{}\text{-Het}$ improves over $M_1$ (Macro-7 81.28\% vs.\ 80.89\%), our homogeneous \sle{} outperforms it across all four scenarios (81.87\% Macro-7, 0.83\% vs.\ 3.18\% Nuis-FPR). Because FOFS already partitions the $K{=}4$ experts into orthogonal feature subspaces under uniform ETF routing, equipping every expert with a general learnable $3{\times}3$ depthwise-separable kernel (which subsumes directional strip and difference filters as special cases) allows data-driven specialization without rigid subspace-morphology mismatch.
+\textbf{Homogeneous vs.\ heterogeneous spatial experts.} We also compare \sle{} against a morphology-specialized heterogeneous variant (+\sag{} + \sle{}-Het, row 4) that assigns four distinct operators to the four experts ($1{\times}3/3{\times}1$ strip convolutions, edge-gated $3{\times}3$ conv, dilated $3{\times}3$ conv, and high-pass contrast filter). While $\sle{}\text{-Het}$ improves over +\sag{} alone (Macro-7 81.28\% vs.\ 80.89\%), our homogeneous \sle{} outperforms it across all four scenarios (81.87\% Macro-7, 0.83\% vs.\ 3.18\% Nuis-FPR). Because FOFS already partitions the $K{=}4$ experts into orthogonal feature subspaces under uniform ETF routing, equipping every expert with a general learnable $3{\times}3$ depthwise-separable kernel (which subsumes directional strip and difference filters as special cases) allows data-driven specialization without rigid subspace-morphology mismatch.
 
 \subsection{Qualitative Analysis}
 
 \begin{figure}[t]
 \centering
-\fbox{\parbox[c][3.2cm][c]{0.95\linewidth}{\centering \todo{Fig.~2 placeholder: Qualitative comparisons on Bridge512 $\rightarrow$ Official S2DS transfer and Bridge512 in-domain. Columns: Input Image, Ground Truth (defects + green/blue nuisance masks), AnomalyCLIP, AdaptCLIP, MoECLIP, and \method{} (Ours).}}}
-\caption{Qualitative anomaly maps on Official S2DS and Bridge512. Binary-prototype detectors activate strongly on vegetation and geodetic survey markers, whereas \method{} suppresses benign nuisances and produces contiguous activations across co-occurring spalling and rebar corrosion.}
+\fbox{\parbox[c][3.2cm][c]{0.95\linewidth}{\centering \todo{Fig.~2 placeholder: Qualitative comparisons on Bridge512 $\rightarrow$ S2DS transfer and Bridge512 in-domain. Columns: Input Image, Ground Truth (defects + green/blue nuisance masks), AnomalyCLIP, AdaptCLIP, MoECLIP, and \method{} (Ours).}}}
+\caption{Qualitative anomaly maps on S2DS and Bridge512. Binary-prototype detectors activate strongly on vegetation and geodetic survey markers, whereas \method{} suppresses benign nuisances and produces contiguous activations across co-occurring spalling and rebar corrosion.}
 \label{fig:qual}
 \end{figure}
 
